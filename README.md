@@ -8,3 +8,10 @@
   3. Peter Weyand
   4. Mujistapha Ahmed
   5. Oluwafemi Akinde
+
+For running project go to the folder O10.Web.Server and launch docker-compose:
+
+```
+>cd O10.Web.Server
+>docker-compose up -d 
+```
