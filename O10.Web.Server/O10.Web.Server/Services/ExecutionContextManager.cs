@@ -29,7 +29,7 @@ namespace O10.Web.Server.Services
     public class ExecutionContextManager : IExecutionContextManager
     {
         private readonly Dictionary<long, StatePersistency> _statePersistencyItems = new Dictionary<long, StatePersistency>();
-        private readonly Dictionary<long, UtxoPersistency> _utxoPersistencyItems = new Dictionary<long, UtxoPersistency>();
+        private readonly Dictionary<long, UtxoPersistencyEx> _utxoPersistencyItems = new Dictionary<long, UtxoPersistencyEx>();
         private readonly Dictionary<long, ICollection<IDisposable>> _accountIdCancellationList;
         private readonly IServiceProvider _serviceProvider;
         private readonly IHubContext<IdentitiesHub> _identitiesHubContext;
@@ -176,9 +176,14 @@ namespace O10.Web.Server.Services
 
                 packetsProvider.Initialize(accountId, cancellationTokenSource.Token);
                 clientCryptoService.Initialize(secretSpendKey, secretViewKey);
+              
                 TaskCompletionSource<byte[]> pwdSource = new TaskCompletionSource<byte[]>();
-                pwdSource.SetResult(pwdSecretKey);
+                if(pwdSecretKey != null)
+                {
+                    pwdSource.SetResult(pwdSecretKey);
+                }
                 relationsBindingService.Initialize(pwdSource);
+              
                 transactionsService.AccountId = accountId;
                 transactionsService.Initialize(clientCryptoService, relationsBindingService);
                 utxoWalletPacketsExtractor.AccountId = accountId;
@@ -200,7 +205,7 @@ namespace O10.Web.Server.Services
 
                 packetsProvider.Start();
 
-                var state = new UtxoPersistency
+                var state = new UtxoPersistencyEx
                 {
                     AccountId = accountId,
                     PacketsProvider = packetsProvider,
@@ -209,7 +214,8 @@ namespace O10.Web.Server.Services
                     RelationsBindingService = relationsBindingService,
                     PacketsExtractor = utxoWalletPacketsExtractor,
                     WalletSynchronizer = walletSynchronizer,
-                    CancellationTokenSource = cancellationTokenSource
+                    CancellationTokenSource = cancellationTokenSource,
+                    BindingKeySource = pwdSource
                 };
                 _utxoPersistencyItems.Add(accountId, state);
             }
@@ -221,7 +227,8 @@ namespace O10.Web.Server.Services
             }
         }
 
-        private IUpdater CreateUtxoUpdater(long accountId, IUtxoClientCryptoService clientCryptoService, CancellationToken cancellationToken) => new UserIdentitiesUpdater(accountId, clientCryptoService, _assetsService, _dataAccessService, _identitiesHubContext, _relationsProofsValidationService, _schemeResolverService, _loggerService, cancellationToken);
+        private IUpdater CreateUtxoUpdater(long accountId, IUtxoClientCryptoService clientCryptoService, CancellationToken cancellationToken) => 
+            new UserIdentitiesUpdater(accountId, clientCryptoService, _assetsService, _dataAccessService, _identitiesHubContext, _relationsProofsValidationService, _schemeResolverService, _loggerService, cancellationToken);
 
         public void Clean(long accountId)
         {
@@ -240,19 +247,9 @@ namespace O10.Web.Server.Services
             }
         }
 
-        public StatePersistency ResolveStateExecutionServices(long accountId)
-        {
-            StatePersistency statePersistency = _statePersistencyItems[accountId];
+        public StatePersistency ResolveStateExecutionServices(long accountId) => _statePersistencyItems[accountId];
 
-            return statePersistency;
-        }
-
-        public UtxoPersistency ResolveUtxoExecutionServices(long accountId)
-        {
-            UtxoPersistency utxoPersistency = _utxoPersistencyItems[accountId];
-
-            return utxoPersistency;
-        }
+        public UtxoPersistencyEx ResolveUtxoExecutionServices(long accountId) => _utxoPersistencyItems[accountId];
 
         public void UnregisterExecutionServices(long accountId)
         {

@@ -12,7 +12,7 @@ namespace O10.Web.Server.Services
         void InitializeStateExecutionServices(long accountId, byte[] secretKey, Func<long, IStateTransactionsService, IStateClientCryptoService, CancellationToken, IUpdater> updaterFactory = null);
         void InitializeUtxoExecutionServices(long accountId, byte[] secretSpendKey, byte[] secretViewKey, byte[] pwdSecretKey, Func<long, IUtxoClientCryptoService, CancellationToken, IUpdater> updaterFactory = null);
         StatePersistency ResolveStateExecutionServices(long accountId);
-        UtxoPersistency ResolveUtxoExecutionServices(long accountId);
+        UtxoPersistencyEx ResolveUtxoExecutionServices(long accountId);
         void UnregisterExecutionServices(long accountId);
     }
 }
