@@ -6,6 +6,8 @@ services:
     build:
       context: .
       dockerfile: O10.Web.Server/Dockerfile
+    ports:
+    - 5003:80
   o10.gateway.webapp:
     image: muaddibco/o10gateway:maxathon
     ports:
