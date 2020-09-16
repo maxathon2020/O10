@@ -24,7 +24,7 @@ namespace O10.Web.Server.Controllers
     [Route("[controller]")]
     public class AccountsController : ControllerBase
     {
-        private IAccountsServiceEx _accountsService;
+        private readonly IAccountsServiceEx _accountsService;
         private readonly IExecutionContextManager _executionContextManager;
         private readonly IDataAccessService _dataAccessService;
         private readonly ITranslatorsRepository _translatorsRepository;
