@@ -179,7 +179,7 @@ namespace O10.Web.Server.Controllers
             }
         }
 
-        [HttpGet("GetAll")]
+        [HttpGet]
         public IActionResult GetAll(long scenarioId = 0, bool withPrivate = false, int ofTypeOnly = 0)
         {
             ScenarioSession scenarioSession = scenarioId > 0 ? _dataAccessService.GetScenarioSessions(User.Identity.Name).FirstOrDefault(s => s.ScenarioId == scenarioId) : null;
