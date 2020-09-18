@@ -1,4 +1,6 @@
-﻿namespace O10.Web.Server.Dtos.User
+﻿using System.Collections.Generic;
+
+namespace O10.Web.Server.Dtos.User
 {
     public class UserAttributeSchemeDto
     {
@@ -8,5 +10,7 @@
         public string RootAttributeContent { get; set; }
         public string RootAssetId { get; set; }
         public string SchemeName { get; set; }
+        public List<UserAttributeDto> RootAttributes { get; set; }
+
     }
 }

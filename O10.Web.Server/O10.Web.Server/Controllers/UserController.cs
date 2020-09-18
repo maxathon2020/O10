@@ -89,13 +89,47 @@ namespace O10.Web.Server.Controllers
         }
 
         [HttpGet("UserAttributes")]
-        public async Task<ActionResult<UserAttributeDto[]>> GetUserAttributes(long accountId)
+        public async Task<ActionResult<IEnumerable<UserAttributeSchemeDto>>> GetUserAttributes(long accountId)
         {
-            IEnumerable<UserRootAttribute> userAttributes = _dataAccessService.GetUserAttributes(accountId).Where(u => !u.IsOverriden);
+            IEnumerable<UserRootAttribute> userRootAttributes = _dataAccessService.GetUserAttributes(accountId);
+            List<UserAttributeSchemeDto> userAttributeSchemes = new List<UserAttributeSchemeDto>();
 
-            UserAttributeDto[] attributes = await Task.WhenAll(userAttributes.Select(async c => await GetUserAttributeDto(c).ConfigureAwait(false))).ConfigureAwait(false);
+            foreach (var rootAttribute in userRootAttributes)
+            {
+                var issuer = rootAttribute.Source;
+                var userAttributeScheme = userAttributeSchemes.Find(i => i.Issuer == issuer && i.RootAssetId == rootAttribute.AssetId.ToHexString());
+                if(userAttributeScheme == null)
+                {
+                    userAttributeScheme = new UserAttributeSchemeDto
+                    {
+                        Issuer = issuer,
+                        IssuerName = _dataAccessService.GetUserIdentityIsserAlias(issuer),
+                        RootAttributeContent = rootAttribute.Content,
+                        RootAssetId = rootAttribute.AssetId.ToHexString(),
+                        SchemeName = rootAttribute.SchemeName
+                    };
 
-            return attributes;
+                    if (string.IsNullOrEmpty(userAttributeScheme.IssuerName))
+                    {
+                        await _schemeResolverService.ResolveIssuer(issuer)
+                            .ContinueWith(t =>
+                            {
+                                if (t.IsCompletedSuccessfully)
+                                {
+                                    _dataAccessService.AddOrUpdateUserIdentityIsser(issuer, t.Result, string.Empty);
+                                    userAttributeScheme.Issuer = t.Result;
+                                }
+                                else
+                                {
+                                    userAttributeScheme.IssuerName = issuer;
+                                }
+                            }, TaskScheduler.Default).ConfigureAwait(false);
+                    }
+                    userAttributeScheme.RootAttributes.Add(await GetUserAttributeDto(rootAttribute).ConfigureAwait(false));
+                }
+            }
+
+            return userAttributeSchemes;
         }
 
         [HttpDelete("UserRootAttribute")]
