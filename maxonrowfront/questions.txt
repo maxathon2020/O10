@@ -1,0 +1,103 @@
+Questions for Friday on Maxonrow Project - 
+
+How do we know what issuer, provider, and middleware that we need to assign a verified token? 
+
+Here are the assignable tokens from the localnet listed in the blockchain starter kit: 
+https://github.com/maxonrow/maxathon/tree/master/blockchain-starter-kit
+
+I repeatedly get this error: 
+
+there was an error:  Error: signature verification failed (operation="sendTransaction", info={"code":4,"codespace":"sdk","message":"Not authorised to approve.","log":"{\"codespace\":\"sdk\",\"code\":4,\"message\":\"Not authorised to approve.\"}"}, response={"code":4,"data":"","log":"{\"codespace\":\"sdk\",\"code\":4,\"message\":\"Not authorised to approve.\"}","hash":"EC0D2E73BDB37146B1368E02217E3EFCC39C68086BB1EBDBF35FF3D9B7B22EAC"}, params={}, version=1.0.2)
+    at Object.createError (errors.ts:157)
+    at checkResponseLog (json-rpc-provider.ts:511)
+    at JsonRpcProvider.checkResponseLog (json-rpc-provider.ts:417)
+    at json-rpc-provider.ts:129
+    at async Approver.approve (approver.tsx:65)
+    at async Main.createTokenHandler (main.tsx:100)
+
+
+on the Approver step of the sample project as defined here: 
+https://github.com/maxonrow/maxathon/tree/master/nft-sample
+
+unless I use exactly those sets of tokens as defined in the sample here: 
+
+
+- provider: "language indoor mushroom gold motor genuine tower ripple baby journey where offer crumble chuckle velvet dizzy trigger owner mother screen panic question cliff dish",
+- issuer: "appear scale write grow tiger puppy trick kite exhibit distance target cliff coin silly because train matrix weather list chat stamp warfare hobby ocean",
+- middleware: "guard loop tell accuse village list prevent sea dolphin weapon own track spike venue gun blind carry hawk weapon track rain amazing author eagle",
+
+
+This does not make sense to me. What are the rules for defining which wallet can be an issuer, middleware or provider? 
+
+
+There is not documentation on this, and I therefore am guessing. I can guess based on the name of the wallet, but that is defined on creation simply as a text input by the user, so that isn’t an actual permission. I can look at the genesis file as defined here: 
+
+https://github.com/maxonrow/maxonrow-go/blob/master/tests/config/genesis.json
+
+And is see that we have on lines 1823-1839: 
+
+
+"token": {
+
+
+"authorised_addresses": [
+
+"mxw1j4duwuaqdj2na054rmlg3pdzncpmwzdjwtfqht",
+
+"mxw1vl8snxtuscacxh52s3e7r7f2pjhr8kzppz7sy8",
+
+"mxw1qgwzdxf66tp5mjpkpfe593nvsst7qzfxzqq73d"
+
+],
+
+"issuer_addresses": [
+
+"mxw146q365au852y3zrxvqs5j4su87pr4m8k4n0l0a",
+
+"mxw1g9jjvuhudh036hfza9dkya4v3p9xq860584hxy",
+
+"mxw1nj5xdz6ychva2mjr7dnzp36tsfzefphadq230m"
+
+],
+
+"provider_addresses": [
+
+"mxw1lmym5599yja76d2s463390he22pcpng3zzpx4p",
+
+"mxw1qjq58cyjslrcqx937le90e3eg3y3wqjjcauyvg",
+
+"mxw1dww3nwtpvfcq2h94rmlftwywy7skc48yaku27p"
+
+]
+
+},
+
+
+(mxw1dww3nwtpvfcq2h94rmlftwywy7skc48yaku27p provider address does not exist in the table on the block-chain starter kit website)
+
+If I use the some of these addresses provided above I find that I get this error: 
+
+there was an error:  Error: insufficient funds (operation="sendTransaction", info={"code":5,"codespace":"sdk","message":"insufficient funds to pay for fees;  < 100000000cin: insufficient funds","log":"{\"codespace\":\"sdk\",\"code\":5,\"message\":\"insufficient funds to pay for fees;  < 100000000cin: insufficient funds\"}"}, response={"code":5,"data":"","log":"{\"codespace\":\"sdk\",\"code\":5,\"message\":\"insufficient funds to pay for fees;  < 100000000cin: insufficient funds\"}","hash":"48E45D6FDD42455E7BD0C5A7836326C491C045C8BEB55967EBCFCE485E50217B"}, params={}, version=1.0.2)
+    at Object.createError (errors.ts:157)
+    at checkResponseLog (json-rpc-provider.ts:514)
+    at JsonRpcProvider.checkResponseLog (json-rpc-provider.ts:417)
+    at json-rpc-provider.ts:129
+    at async Approver.approve (approver.tsx:65)
+    at async Main.createTokenHandler (main.tsx:100)
+webpackHotDevClient.js:76 
+
+And indeed some of them do not have enough funds by checking here: 
+
+http://localhost:26657/account?address=""
+
+I would like to know which of these accounts have money and what permissions they have so they can be used. It would be good to know also how permissions are assigned. When a wallet is created and whitelisted using the kyc sample, then how does it receive permissions to allow it to be provider, issuer, or middleware for another transaction? There is some way to create a provider, middleware, or issuer - does that exist on the KYC wallet whitelisting, or is that created elsewhere? Is there any way to retrieve a list of all wallets, their permissions, their mnemonics, and their MXW in an api call?
+
+--
+
+I have a transaction receipt after transferring a token, but how do I query the contents of a wallet and the number of tokens inside? I can see the amount of MXW existing here: http://localhost:26657/account?address, but not the tokens. 
+
+How do I, 1) query for and 2) transfer an already existing NFT? The example has a provider/issuer/middleware creating a token for a wallet user and then minting and transfering to the user.
+
+I can use data.nft.getState() of an already existing nft (that in this example I have created) and query for who the owner is. But I want to query the wallet.
+
+
