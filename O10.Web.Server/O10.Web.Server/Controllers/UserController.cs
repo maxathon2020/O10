@@ -40,6 +40,7 @@ using Newtonsoft.Json;
 using O10.Core.HashCalculations;
 using O10.Client.Common.Entities;
 using O10.Web.Server.Services;
+using System.Diagnostics;
 
 namespace O10.Web.Server.Controllers
 {
@@ -146,17 +147,9 @@ namespace O10.Web.Server.Controllers
                 UserAttributeId = c.UserAttributeId,
                 SchemeName = c.SchemeName,
                 Content = c.Content,
-                OriginalBlindingFactor = c.OriginalBlindingFactor.ToHexString(),
-                OriginalCommitment = c.OriginalCommitment.ToHexString(),
-                OriginatingCommitment = c.IssuanceCommitment.ToHexString(),
-                LastBlindingFactor = c.LastBlindingFactor.ToHexString(),
-                LastCommitment = c.LastCommitment.ToHexString(),
-                AssetId = c.AssetId.ToHexString(),
                 Validated = !string.IsNullOrEmpty(c.Content),
                 Source = c.Source,
                 IssuerName = issuerName,
-                LastDestinationKey = c.LastDestinationKey.ToHexString(),
-                LastTransactionKey = c.LastTransactionKey.ToHexString(),
                 IsOverriden = c.IsOverriden
             };
         }
@@ -335,6 +328,8 @@ namespace O10.Web.Server.Controllers
         [HttpPost("SendEmployeeRequest")]
         public async Task<IActionResult> SendEmployeeRequest(long accountId, [FromBody] UserAttributeTransferDto userAttributeTransfer)
         {
+            UserRootAttribute userRootAttribute = _dataAccessService.GetUserRootAttribute(userAttributeTransfer.UserAttributeId);
+            string assetId = userRootAttribute.AssetId.ToHexString();
             UtxoPersistency utxoPersistency = _executionContextManager.ResolveUtxoExecutionServices(accountId);
 
             (bool proceed, BiometricProof biometricProof) = await CheckBiometrics(userAttributeTransfer, accountId).ConfigureAwait(false);
@@ -350,7 +345,7 @@ namespace O10.Web.Server.Controllers
                     string groupOwnerName = categoryEntry.Split("|")[0];
                     string groupName = categoryEntry.Split("|")[1];
 
-                    long groupRelationId = _dataAccessService.AddUserGroupRelation(accountId, groupOwnerName, userAttributeTransfer.Target, groupName, userAttributeTransfer.AssetId, userAttributeTransfer.Source);
+                    long groupRelationId = _dataAccessService.AddUserGroupRelation(accountId, groupOwnerName, userAttributeTransfer.Target, groupName, assetId, userAttributeTransfer.Source);
 
                     if (groupRelationId > 0)
                     {
@@ -361,12 +356,12 @@ namespace O10.Web.Server.Controllers
                             GroupOwnerKey = userAttributeTransfer.Target,
                             GroupName = groupName,
                             Issuer = userAttributeTransfer.Source,
-                            AssetId = userAttributeTransfer.AssetId
+                            AssetId = assetId
                         };
 
                         await _idenitiesHubContext.Clients.Group(accountId.ToString(CultureInfo.InvariantCulture)).SendAsync("PushGroupRelation", groupRelationDto).ConfigureAwait(false);
 
-                        await _schemeResolverService.StoreGroupRelation(userAttributeTransfer.Source, userAttributeTransfer.AssetId, userAttributeTransfer.Target, groupName).ConfigureAwait(false);
+                        await _schemeResolverService.StoreGroupRelation(userAttributeTransfer.Source, assetId, userAttributeTransfer.Target, groupName).ConfigureAwait(false);
                     }
                 }
 
@@ -487,7 +482,7 @@ namespace O10.Web.Server.Controllers
 
         private async Task SendIdentityProofs(long accountId, UserAttributeTransferDto userAttributeTransfer, IUtxoTransactionsService transactionsService, IRelationsBindingService relationsBindingService, BiometricProof biometricProof, AssociatedProofPreparation[] associatedProofPreparations = null)
         {
-            (byte[] issuer, RequestInput requestInput) = GetRequestInput<RequestInput>(userAttributeTransfer, accountId, biometricProof);
+            (byte[] issuer, RequestInput requestInput) = GetRequestInput<RequestInput>(userAttributeTransfer, biometricProof);
 
             OutputModel[] outputModels = await _gatewayService.GetOutputs(_restApiConfiguration.RingSize + 1).ConfigureAwait(false);
             byte[][] issuanceCommitments = await _gatewayService.GetIssuanceCommitments(issuer, _restApiConfiguration.RingSize + 1).ConfigureAwait(false);
@@ -502,7 +497,7 @@ namespace O10.Web.Server.Controllers
 
         private async Task SendDocumentSignRequest(long accountId, UserAttributeTransferDto userAttributeTransfer, IUtxoTransactionsService transactionsService, BiometricProof biometricProof, AssociatedProofPreparation[] associatedProofPreparations = null)
         {
-            (byte[] issuer, DocumentSignRequestInput requestInput) = GetRequestInput<DocumentSignRequestInput>(userAttributeTransfer, accountId, biometricProof);
+            (byte[] issuer, DocumentSignRequestInput requestInput) = GetRequestInput<DocumentSignRequestInput>(userAttributeTransfer, biometricProof);
             string[] extraInfo = userAttributeTransfer.ExtraInfo.Split('|');
             byte[] groupIssuer = extraInfo[0].HexStringToByteArray();
             byte[] groupAssetId = await _assetsService.GenerateAssetId(AttributesSchemes.ATTR_SCHEME_NAME_EMPLOYEEGROUP, extraInfo[0] + extraInfo[1], userAttributeTransfer.Target).ConfigureAwait(false);
@@ -521,7 +516,7 @@ namespace O10.Web.Server.Controllers
 
         private async Task SendEmployeeRequest(long accountId, UserAttributeTransferDto userAttributeTransfer, IUtxoTransactionsService transactionsService, BiometricProof biometricProof, AssociatedProofPreparation[] associatedProofPreparations = null)
         {
-            (byte[] issuer, EmployeeRequestInput requestInput) = GetRequestInput<EmployeeRequestInput>(userAttributeTransfer, accountId, biometricProof);
+            (byte[] issuer, EmployeeRequestInput requestInput) = GetRequestInput<EmployeeRequestInput>(userAttributeTransfer, biometricProof);
 
             string[] categoryEntries = userAttributeTransfer.ExtraInfo.Split("/");
             foreach (string categoryEntry in categoryEntries)
@@ -584,9 +579,9 @@ namespace O10.Web.Server.Controllers
             return Ok(_dataAccessService.UpdateUserAttributeContent(userAttribute.UserAttributeId, userAttribute.Content));
         }
 
-        private (byte[] issuer, T requestInput) GetRequestInput<T>(UserAttributeTransferDto userAttributeTransfer, long accountId, BiometricProof biometricProof) where T : RequestInput, new()
+        private (byte[] issuer, T requestInput) GetRequestInput<T>(UserAttributeTransferDto userAttributeTransfer, BiometricProof biometricProof) where T : RequestInput, new()
         {
-            UserRootAttribute userRootAttribute = _dataAccessService.GetRootAttributeByOriginalCommitment(accountId, userAttributeTransfer.OriginalCommitment.HexStringToByteArray());
+            UserRootAttribute userRootAttribute = _dataAccessService.GetUserRootAttribute(userAttributeTransfer.UserAttributeId);
             byte[] target = userAttributeTransfer.Target.HexStringToByteArray();
             byte[] target2 = userAttributeTransfer.Target2?.HexStringToByteArray();
             byte[] payload = userAttributeTransfer.Payload?.HexStringToByteArray();
@@ -1118,13 +1113,15 @@ namespace O10.Web.Server.Controllers
 
             try
             {
+                UserRootAttribute userRootAttribute = _dataAccessService.GetUserRootAttribute(relationsProofs.UserAttributeId);
+                string assetId = userRootAttribute.AssetId.ToHexString();
                 UtxoPersistency utxoPersistency = _executionContextManager.ResolveUtxoExecutionServices(accountId);
 
                 (bool proceed, BiometricProof biometricProof) = (true, null);// await CheckBiometrics(relationsProofs, accountId).ConfigureAwait(false);
 
                 if (true)
                 {
-                    (byte[] issuer, RelationsProofsInput requestInput) = GetRequestInput<RelationsProofsInput>(relationsProofs, accountId, biometricProof);
+                    (byte[] issuer, RelationsProofsInput requestInput) = GetRequestInput<RelationsProofsInput>(relationsProofs, biometricProof);
 
                     byte[] imageHash;
                     if (!string.IsNullOrEmpty(relationsProofs.ImageContent))
@@ -1142,11 +1139,11 @@ namespace O10.Web.Server.Controllers
                     if (relationsProofs.WithKnowledgeProof)
                     {
 
-                        _assetsService.GetBlindingPoint(ConfidentialAssetsHelper.PasswordHash(relationsProofs.Password), relationsProofs.AssetId.HexStringToByteArray(), out byte[] blindingPoint, out byte[] blindingFactor);
+                        _assetsService.GetBlindingPoint(ConfidentialAssetsHelper.PasswordHash(relationsProofs.Password), userRootAttribute.AssetId, out byte[] blindingPoint, out byte[] blindingFactor);
                         ;
-                        byte[] rootOriginatingCommitment = _assetsService.GetCommitmentBlindedByPoint(relationsProofs.AssetId.HexStringToByteArray(), blindingPoint);
+                        byte[] rootOriginatingCommitment = _assetsService.GetCommitmentBlindedByPoint(userRootAttribute.AssetId, blindingPoint);
                         byte[] groupId = await _identityAttributesService.GetGroupId(AttributesSchemes.ATTR_SCHEME_NAME_PASSWORD, relationsProofs.Source).ConfigureAwait(false);
-                        byte[] protectionAssetId = await _assetsService.GenerateAssetId(AttributesSchemes.ATTR_SCHEME_NAME_PASSWORD, relationsProofs.AssetId, relationsProofs.Source).ConfigureAwait(false);
+                        byte[] protectionAssetId = await _assetsService.GenerateAssetId(AttributesSchemes.ATTR_SCHEME_NAME_PASSWORD, assetId, relationsProofs.Source).ConfigureAwait(false);
                         byte[] protectionAssetNonBlindedCommitment = ConfidentialAssetsHelper.GetNonblindedAssetCommitment(protectionAssetId);
                         byte[] protectionAssetCommitment = ConfidentialAssetsHelper.SumCommitments(protectionAssetNonBlindedCommitment, blindingPoint);
                         byte[] associatedBlindingFactor = ConfidentialAssetsHelper.GetRandomSeed();
