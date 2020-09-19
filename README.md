@@ -26,16 +26,15 @@ Add there the following folders:
 - /ASP.NET/Https
 
 ### Docker composing
-For running project go to the folder O10.Web.Server and launch docker-compose:
+For running project just launch docker-compose:
 
 ```
->cd O10.Web.Server
->docker-compose up -d 
+$ docker-compose up -d 
 ```
 
 Check if portal, gateway and node are up and running and are connected to each other:
 ```
-curl --location --request GET 'http://localhost:5003/Diagnostic'
+$ curl --location --request GET 'http://localhost:5003/Diagnostic'
 ```
 
 There should be returned response as follows:
