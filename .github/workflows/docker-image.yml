@@ -3,7 +3,7 @@ name: ci
 on:
   push:
     branches: master
-    paths: 'O10.Web.Server/O10.Web.Server/Properties/Version.txt'
+
 jobs:
   path-context:
     runs-on: ubuntu-latest
