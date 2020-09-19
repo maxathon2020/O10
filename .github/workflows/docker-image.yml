@@ -20,5 +20,6 @@ jobs:
       -
         name: Build and push
         run: |
+          ls
           docker build . --tag muaddibco/o10portal:maxathon
           docker push muaddibco/o10portal:maxathon
