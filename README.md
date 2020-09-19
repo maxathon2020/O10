@@ -9,23 +9,7 @@
   4. Mujistapha Ahmed
   5. Oluwafemi Akinde
 
-## Project dockerization
-### Prerequisites
-Before composing docker image it will be required to add some folders into shared folders at your docker settings
-
-#### For iOS
-At your Docker for iOS go to Docker -> Preferences... -> File Sharing
-Add there the following folders:
-- /Microsoft/UserSecrets
-- /ASP.NET/Https
-
-#### For Widows
-At your Docker for Windows go to Settings -> Resources -> File Sharing
-Add there the following folders:
-- /Microsoft/UserSecrets
-- /ASP.NET/Https
-
-### Docker composing
+## Launching solution
 For running project just launch docker-compose:
 
 ```
