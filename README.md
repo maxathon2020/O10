@@ -24,20 +24,25 @@ $ curl --location --request GET 'http://localhost:5003/Diagnostic'
 There should be returned response as follows:
 ```
 [
-    {
-        "context": "Portal",
-        "infoType": "Version",
-        "message": "1.0.0.0"
-    },
-    {
-        "context": "Gateway",
-        "infoType": "Version",
-        "message": "1.0.0.0"
-    },
-    {
-        "context": "Node",
-        "infoType": "Version",
-        "message": "1.0.0.0"
-    }
+	{
+		"context": "Portal",
+		"infoType": "Version",
+		"message": "1.0.0.0"
+	},
+	{
+		"context": "Gateway",
+		"infoType": "Version",
+		"message": "1.0.0.0"
+	},
+	{
+		"context": "Gateway",
+		"infoType": "UpdaterConnectivity",
+		"message": "Succeeded"
+	},
+	{
+		"context": "Node",
+		"infoType": "Version",
+		"message": "1.0.0.0"
+	}
 ]
 ```
