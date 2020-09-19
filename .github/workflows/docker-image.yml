@@ -20,12 +20,5 @@ jobs:
       -
         name: Build and push
         run: |
-          echo "Changing folder to O10.Web.Server"
-          cd O10.Web.Server
-          pwd
-          echo ">>> ls"
-          ls
-          echo ">>> ls O10.Web.Server"
-          ls O10.Web.Server/
           docker build O10.Web.Server --tag muaddibco/o10portal:maxathon
           docker push muaddibco/o10portal:maxathon
