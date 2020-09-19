@@ -7,15 +7,11 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "O10.Web.Server", "O10.Web.S
 EndProject
 Project("{E53339B2-1760-4266-BCC7-CA923CBCF16C}") = "docker-compose", "docker-compose.dcproj", "{37859FF2-572A-4725-A1DF-2B99EFF3C697}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".globals", ".globals", "{01F7D938-DD7A-41F7-95E7-74ABA6930F38}"
-	ProjectSection(SolutionItems) = preProject
-		..\README.md = ..\README.md
-	EndProjectSection
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{639D7ED0-CC4B-4881-BDB8-16B01C4AE38D}"
 	ProjectSection(SolutionItems) = preProject
 		..\docker-compose.yml = ..\docker-compose.yml
 		Dockerfile = Dockerfile
+		..\README.md = ..\README.md
 	EndProjectSection
 EndProject
 Global

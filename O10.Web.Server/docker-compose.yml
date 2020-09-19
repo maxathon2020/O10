@@ -6,14 +6,22 @@ services:
     build:
       context: .
       dockerfile: O10.Web.Server/Dockerfile
+    environment:
+      - ASPNETCORE_URLS=http://+:80
     ports:
     - 5003:80
   o10.gateway.webapp:
     image: muaddibco/o10gateway:maxathon
+    environment:
+      - ASPNETCORE_URLS=http://+:80
+      - GWSERVICENAME=o10.gateway.webapp
+      - NODESERVICENAME=o10.node.webapp
     ports:
     - 5002:80
 
   o10.node.webapp:
     image: muaddibco/o10node:maxathon
+    environment:
+      - ASPNETCORE_URLS=http://+:80
     ports:
     - 5001:80

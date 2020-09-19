@@ -13,6 +13,7 @@
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.10.9" />
     <PackageReference Include="O10.Client.Common" Version="1.0.3" />
     <PackageReference Include="O10.Client.DataLayer" Version="1.0.0" />
+    <PackageReference Include="O10.Client.DataLayer.SQLite" Version="1.0.0" />
     <PackageReference Include="O10.Client.DataLayer.SqlServer" Version="1.0.0" />
     <PackageReference Include="O10.Client.Web.Common" Version="1.0.1" />
     <PackageReference Include="O10.Core" Version="1.0.0" />

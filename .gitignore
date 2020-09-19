@@ -56,3 +56,4 @@ artifacts/
 !*.[Cc]ache/
 /NugetSource
 /**/.vs/
+*.dat
