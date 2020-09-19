@@ -25,7 +25,7 @@ using O10.Web.Server.Properties;
 namespace O10.Web.Server.Controllers
 {
     [ApiController]
-    [Route("[controller]")]
+    [Route("api/[controller]")]
     public class BiometricController : ControllerBase
     {
         private readonly IFacesService _facesService;

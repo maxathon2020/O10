@@ -13,7 +13,7 @@ using O10.Core.Logging;
 namespace O10.Web.Server.Controllers
 {
     [ApiController]
-    [Route("[controller]")]
+    [Route("api/[controller]")]
     public class SchemaResolutionController : ControllerBase
     {
         private readonly IDataAccessService _dataAccessService;

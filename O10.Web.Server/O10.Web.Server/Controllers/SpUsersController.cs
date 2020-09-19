@@ -25,7 +25,7 @@ namespace O10.Web.Server.Controllers
 {
     [Authorize]
     [ApiController]
-    [Route("[controller]")]
+    [Route("api/[controller]")]
     public class SpUsersController : ControllerBase
     {
         private readonly IAccountsServiceEx _accountsService;

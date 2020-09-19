@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 namespace O10.Web.Server.Controllers
 {
     [ApiController]
-    [Route("[controller]")]
+    [Route("api/[controller]")]
     public class DiagnosticController : ControllerBase
     {
         private readonly IGatewayService _gatewayService;

@@ -8,7 +8,7 @@ using O10.Web.Server.Services;
 namespace O10.Web.Server.Controllers
 {
     [ApiController]
-    [Route("[controller]")]
+    [Route("api/[controller]")]
     public class ConsentManagementController : ControllerBase
     {
         private readonly IConsentManagementService _consentManagementService;

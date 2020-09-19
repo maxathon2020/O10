@@ -21,7 +21,7 @@ using O10.Client.DataLayer.Model;
 namespace O10.Web.Server.Controllers
 {
     [ApiController]
-    [Route("[controller]")]
+    [Route("api/[controller]")]
     public class AccountsController : ControllerBase
     {
         private readonly IAccountsServiceEx _accountsService;

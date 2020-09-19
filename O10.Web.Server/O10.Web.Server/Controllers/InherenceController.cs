@@ -8,7 +8,7 @@ using O10.Web.Server.Services.Inherence;
 namespace O10.Web.Server.Controllers
 {
     [ApiController]
-    [Route("[controller]")]
+    [Route("api/[controller]")]
     public class InherenceController : ControllerBase
     {
         private readonly IInherenceServicesManager _inherenceServicesManager;

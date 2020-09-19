@@ -46,7 +46,7 @@ namespace O10.Web.Server.Controllers
 {
     [Authorize]
     [ApiController]
-    [Route("[controller]")]
+    [Route("api/[controller]")]
     public class UserController : ControllerBase
     {
         private readonly IDocumentSignatureVerifier _documentSignatureVerifier;
