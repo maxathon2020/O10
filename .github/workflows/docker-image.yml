@@ -20,5 +20,6 @@ jobs:
       -
         name: Build and push
         run: |
-          docker build O10.Web.Server/O10.Web.Server --tag muaddibco/o10portal:maxathon
+          cd O10.Web.Server
+          docker build O10.Web.Server --tag muaddibco/o10portal:maxathon
           docker push muaddibco/o10portal:maxathon
