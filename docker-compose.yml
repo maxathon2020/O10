@@ -5,6 +5,7 @@ services:
     image: muaddibco/o10portal:maxathon
     environment:
       - ASPNETCORE_URLS=http://+:80
+      - GWSERVICENAME=o10.gateway.webapp
     ports:
       - 5003:80
   o10.gateway.webapp:

@@ -16,5 +16,6 @@ namespace O10.Web.Server.Configuration
 
         public string FacePersonGroupId { get; set; }
         public bool DemoMode { get; set; }
+        public string DemoPassword { get; set; }
     }
 }

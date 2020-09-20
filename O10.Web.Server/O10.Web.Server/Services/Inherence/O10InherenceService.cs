@@ -25,6 +25,7 @@ using Newtonsoft.Json;
 using System.Collections.Concurrent;
 using O10.Core.Identity;
 using O10.Client.Common.Dtos.UniversalProofs;
+using O10.Web.Server.Configuration;
 
 namespace O10.Web.Server.Services.Inherence
 {
@@ -39,6 +40,7 @@ namespace O10.Web.Server.Services.Inherence
         private readonly ISpValidationsService _spValidationsService;
         private readonly IHubContext<O10InherenceHub> _o10InherenceHubContext;
         private readonly IAzureConfiguration _azureConfiguration;
+        private readonly IPortalConfiguration _portalConfiguration;
         private readonly IExecutionContextManager _executionContextManager;
         private readonly IUniversalProofsPool _universalProofsPool;
         private readonly IIdentityKeyProvider _identityKeyProvider;
@@ -60,6 +62,7 @@ namespace O10.Web.Server.Services.Inherence
             _accountsService = accountsService;
             _spValidationsService = spValidationsService;
             _o10InherenceHubContext = o10InherenceHubContext;
+            _portalConfiguration = configurationService.Get<IPortalConfiguration>();
             _azureConfiguration = configurationService.Get<IAzureConfiguration>();
             _logger = loggerService.GetLogger(nameof(O10InherenceService));
             _executionContextManager = executionContextManager;
@@ -117,7 +120,8 @@ namespace O10.Web.Server.Services.Inherence
             AccountId = inherenceSetting.AccountId;
             _logger.LogIfDebug(() => $"[{AccountId}]: {nameof(Initialize)} proceeding");
 
-            AccountDescriptor accountDescriptor = _accountsService.Authenticate(inherenceSetting.AccountId, GetDefaultO10InherencePassword());
+
+            AccountDescriptor accountDescriptor = _accountsService.GetById(inherenceSetting.AccountId);
             if (accountDescriptor == null)
             {
                 _dataAccessService.RemoveInherenceSetting(Name);
@@ -127,6 +131,10 @@ namespace O10.Web.Server.Services.Inherence
                 {
                     throw new Exception($"{nameof(O10InherenceService)} initialization failed");
                 }
+            }
+            else
+            {
+                accountDescriptor = _accountsService.Authenticate(inherenceSetting.AccountId, GetDefaultO10InherencePassword());
             }
 
             _logger.Info($"[{AccountId}]: Invoking InitializeStateExecutionServices");
@@ -162,6 +170,11 @@ namespace O10.Web.Server.Services.Inherence
         private string GetDefaultO10InherencePassword()
         {
             string secretName = "ConsentManagementPassword";
+
+            if(_portalConfiguration.DemoMode)
+            {
+                return _portalConfiguration.DemoPassword;
+            }
 
             return AzureHelper.GetSecretValue(secretName, _azureConfiguration.AzureADCertThumbprint, _azureConfiguration.AzureADApplicationId, _azureConfiguration.KeyVaultName);
         }
