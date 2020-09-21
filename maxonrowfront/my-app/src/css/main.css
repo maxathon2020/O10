@@ -5,11 +5,11 @@
     height: 100vh;
     width: 100vw;
     grid-template-rows: 4vh 47vh 47vh 2vh;
-    grid-template-columns: 150px auto auto 150px;
+    grid-template-columns: 150px calc(50vw - 150px) calc(50vw - 150px) 150px;
     grid-template-areas:
         "header header header header"
-        "leftsidebar addresses pages rightsidebar"
-        "leftsidebar addresses pages rightsidebar"
+        "leftsidebar leftpanel pages rightsidebar"
+        "leftsidebar leftpanel pages rightsidebar"
         "footer footer footer footer";
     background-color: rgba(100,100,100,1) ;
     color: #444;
@@ -30,8 +30,8 @@
     background: rgba(255, 255, 255, 0.5);
 }
 
-.addresses {
-    grid-area: addresses;
+.leftpanel {
+    grid-area: leftpanel;
     /* background: purple; */
     background: rgba(100, 200, 50, 0.5);
 }
@@ -46,3 +46,19 @@
     background: rgba(50, 100, 100, 0.5);
 }
 
+.button{
+    display: inline-block;
+    background: black;
+    color: white;
+    width: 20rem;
+    padding: 5px;
+    text-align: center;
+    cursor: pointer;
+}
+
+.input{
+    padding: 5px; 
+    margin-left: 10px;
+    margin-right: 10px;
+    border-width: 2px;
+}

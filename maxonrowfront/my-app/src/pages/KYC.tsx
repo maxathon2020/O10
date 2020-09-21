@@ -81,12 +81,19 @@ class KYC extends Component<MyProps, MyState>{
         this.state = {
             data: new DataClass()
         }
+    }
+
+    componentDidMount(){
         if(this.props.Wallets!=undefined){
-            let data = this.state.data;
-            data.walletDefined = true;
-            this.setState({data})
+            this.createWalletsHandler();
         }
     }
+
+    componentWillUnmount(){
+        let data = this.state.data;
+        data.walletDefined = false;
+        this.setState({data});
+    }   
 
     componentDidUpdate(prevState:any, prevProps:any) {
         if(prevProps!=this.props && this.state.data.walletDefined == false){
@@ -122,10 +129,7 @@ class KYC extends Component<MyProps, MyState>{
             catch(e){
                 console.log("there was an error on kycData: ", e);
             }
-            
-            /**
-             * Provider Sign KYC Data
-             */
+    
             let partialSignedTrx: mxw.KycTransaction;
 
             try{
@@ -213,13 +217,7 @@ class KYC extends Component<MyProps, MyState>{
                         onClick={()=>{
                             this.walletGenesis();
                         }}
-                        style={{
-                            display: 'inline-block',
-                            background: "black", 
-                            color: "white", 
-                            width: "20rem", 
-                            padding: '5px'
-                        }}
+                        className="button"
                     >
                         Wallet Genesis 
                     </div>

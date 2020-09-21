@@ -104,11 +104,18 @@ class NFT extends Component<MyProps, MyState>{
         this.state = {
             data: new DataClass()
         }   
+    }
+
+    componentDidMount(){
         if(this.props.Wallets!=undefined){
-            let data = this.state.data;
-            data.walletDefined = true;
-            this.setState({data})
+            this.createWalletsHandler();
         }
+    }
+
+    componentWillUnmount(){
+        let data = this.state.data;
+        data.walletDefined = false;
+        this.setState({data});
     }
 
     componentDidUpdate(prevState:any, prevProps:any) {
@@ -179,7 +186,18 @@ class NFT extends Component<MyProps, MyState>{
             let data = this.state.data;
             const minter = new Minter(data.symbol, data.itemId, data.itemMetadata, data.itemProperties);
             data.trxReceipt = await minter.mint(data.wallet, data.wallet.address);
-            // data.trxReceipt = await minter.mint(data.wallet, data.issuer.address);
+            // transferring to own wallet gives the following error: 
+            // there was an error:  Error: token item not found (operation="sendTransaction", info={"code":2111,"codespace":"mxw","message":"Token item not found.","log":"{\"codespace\":\"mxw\",\"code\":2111,\"message\":\"Token item not found.\"}"}, response={"code":2111,"data":"","log":"{\"codespace\":\"mxw\",\"code\":2111,\"message\":\"Token item not found.\"}","hash":"A4B11C2C69DB45E6B7002491157A925B640ED4018CC5ABEA2BD672CD4441626F"}, params={}, version=1.0.2)
+            // at Object.createError (errors.ts:157)
+            // at checkResponseLog (json-rpc-provider.ts:574)
+            // at JsonRpcProvider.checkResponseLog (json-rpc-provider.ts:417)
+            // at json-rpc-provider.ts:129
+            // at async Transferer.transfer (transferer.tsx:20)
+            // at async NFT.transferHandler (NFT.tsx:212)
+            
+            //It may not be possible to mint an item to your own wallet.
+
+            //data.trxReceipt = await minter.mint(data.wallet, data.issuer.address);
             this.setState({data}, ()=>{console.log("DATA AFTER MINTING: ", this.state.data)});
         }
         catch(e){
@@ -249,13 +267,7 @@ class NFT extends Component<MyProps, MyState>{
                         onClick={()=>{
                             this.createTokenHandler();
                         }}
-                        style={{
-                            display: 'inline-block',
-                            background: "black", 
-                            color: "white", 
-                            width: "20rem", 
-                            padding: '5px'
-                        }}
+                        className="button"
                     >
                         Create Token
                     </div>
@@ -265,13 +277,7 @@ class NFT extends Component<MyProps, MyState>{
                         onClick={()=>{
                             this.mintTokenHandler();
                         }}
-                        style={{
-                            display: 'inline-block',
-                            background: "black", 
-                            color: "white", 
-                            width: "20rem", 
-                            padding: '5px'
-                        }}
+                        className="button"
                     >
                         Mint Token
                     </div>
@@ -281,13 +287,7 @@ class NFT extends Component<MyProps, MyState>{
                         onClick={()=>{
                             this.transferHandler();
                         }}
-                        style={{
-                            display: 'inline-block',
-                            background: "black", 
-                            color: "white", 
-                            width: "20rem", 
-                            padding: '5px'
-                        }}
+                        className="button"
                     >
                         Transfer Token
                     </div>
