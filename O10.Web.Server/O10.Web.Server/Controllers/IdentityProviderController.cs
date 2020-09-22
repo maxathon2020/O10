@@ -332,8 +332,8 @@ namespace O10.Web.Server.Controllers
         }
 
         [AllowAnonymous]
-        [HttpPost("IssueExternalIdpAttributes/{issuer}")]
-        public async Task<ActionResult<IEnumerable<AttributeValue>>> IssueExternalIdpAttributes(string issuer, [FromBody] IssueAttributesRequestDTO request)
+        [HttpPost("IssueIdpAttributes/{issuer}")]
+        public async Task<ActionResult<IEnumerable<AttributeValue>>> IssueIdpAttributes(string issuer, [FromBody] IssueAttributesRequestDTO request)
         {
             if (request is null)
             {
@@ -359,11 +359,11 @@ namespace O10.Web.Server.Controllers
 
             if (!string.IsNullOrEmpty(request.PublicSpendKey) && !string.IsNullOrEmpty(request.PublicViewKey))
             {
-                await IssueExternalIdpAttributesAsRoot(issuer, request, account, statePersistency).ConfigureAwait(false);
+                await IssueIdpAttributesAsRoot(issuer, request, account, statePersistency).ConfigureAwait(false);
             }
             else
             {
-                await IssueExternalIdpAttributesAsAssociated(issuer, request, statePersistency).ConfigureAwait(false);
+                await IssueIdpAttributesAsAssociated(issuer, request, statePersistency).ConfigureAwait(false);
             }
 
             var attributeValues = FillAttributeValues(request, attributeDefinitions);
@@ -391,7 +391,7 @@ namespace O10.Web.Server.Controllers
                 return new ReadOnlyCollection<AttributeValue>(attributeValues);
             }
 
-            async Task IssueExternalIdpAttributesAsRoot(
+            async Task IssueIdpAttributesAsRoot(
                 string issuer,
                 IssueAttributesRequestDTO request,
                 AccountDescriptor account,
@@ -456,7 +456,7 @@ namespace O10.Web.Server.Controllers
                 }
             }
 
-            async Task IssueExternalIdpAttributesAsAssociated(string issuer, IssueAttributesRequestDTO request, StatePersistency statePersistency)
+            async Task IssueIdpAttributesAsAssociated(string issuer, IssueAttributesRequestDTO request, StatePersistency statePersistency)
             {
                 IdentitiesScheme rootScheme = _dataAccessService.GetRootIdentityScheme(issuer);
 

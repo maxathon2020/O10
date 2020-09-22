@@ -14,15 +14,15 @@ namespace O10.Web.Server.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class SchemaResolutionController : ControllerBase
+    public class SchemeResolutionController : ControllerBase
     {
         private readonly IDataAccessService _dataAccessService;
         private readonly ILogger _logger;
 
-        public SchemaResolutionController(IDataAccessService dataAccessService, ILoggerService loggerService)
+        public SchemeResolutionController(IDataAccessService dataAccessService, ILoggerService loggerService)
         {
             _dataAccessService = dataAccessService;
-            _logger = loggerService.GetLogger(nameof(SchemaResolutionController));
+            _logger = loggerService.GetLogger(nameof(SchemeResolutionController));
         }
 
         [HttpGet("IdentityProviderName/{key}")]
