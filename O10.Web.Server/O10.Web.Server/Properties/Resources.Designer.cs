@@ -61,6 +61,15 @@ namespace O10.Web.Server.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Authentication failed for the account with accountId &apos;{0}&apos;.
+        /// </summary>
+        internal static string ERR_ACCOUNT_AUTHENTICATION_FAILED {
+            get {
+                return ResourceManager.GetString("ERR_ACCOUNT_AUTHENTICATION_FAILED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Account with id {0} not found.
         /// </summary>
         internal static string ERR_ACCOUNT_NOT_FOUND {
@@ -129,6 +138,15 @@ namespace O10.Web.Server.Properties {
         internal static string ERR_COMMITMENT_ELIGIBILITY_VERIFICATION_FAILED {
             get {
                 return ResourceManager.GetString("ERR_COMMITMENT_ELIGIBILITY_VERIFICATION_FAILED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Execution context not started yet for the account with accountId &apos;{0}&apos;.
+        /// </summary>
+        internal static string ERR_EXECUTIONCONTEXT_NOTSTARTED {
+            get {
+                return ResourceManager.GetString("ERR_EXECUTIONCONTEXT_NOTSTARTED", resourceCulture);
             }
         }
         
