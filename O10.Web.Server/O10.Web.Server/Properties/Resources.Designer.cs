@@ -232,6 +232,15 @@ namespace O10.Web.Server.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Received account with accountId &apos;{0}&apos; with unexpected type &apos;{0}&apos;.
+        /// </summary>
+        internal static string ERR_UNEXPECTED_ACCOUNT_TYPE {
+            get {
+                return ResourceManager.GetString("ERR_UNEXPECTED_ACCOUNT_TYPE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Validation of proof failed: {0}.
         /// </summary>
         internal static string ERR_VALIDATION_PROOF_FAILED {

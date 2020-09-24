@@ -190,7 +190,7 @@ namespace O10.Web.Server.Controllers
             else
             {
                 var accounts = _accountsService.GetAll()
-                    .Where(a => withPrivate || (!a.IsPrivate && (ofTypeOnly == 0 || (int)a.AccountType == ofTypeOnly)))
+                    .Where(a => (withPrivate || !a.IsPrivate) && (ofTypeOnly == 0 || (int)a.AccountType == ofTypeOnly))
                     .Select(a => _translatorsRepository.GetInstance<AccountDescriptor, AccountDto>().Translate(a));
 
                 return Ok(accounts);

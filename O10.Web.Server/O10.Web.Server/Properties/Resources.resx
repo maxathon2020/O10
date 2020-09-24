@@ -174,6 +174,9 @@
   <data name="ERR_SP_AUTHENTICATION_FAILED" xml:space="preserve">
     <value>Authentication Proofs were incorrect</value>
   </data>
+  <data name="ERR_UNEXPECTED_ACCOUNT_TYPE" xml:space="preserve">
+    <value>Received account with accountId '{0}' with unexpected type '{0}'</value>
+  </data>
   <data name="ERR_VALIDATION_PROOFS_NOT_COMPLETE" xml:space="preserve">
     <value>Validation proofs were not complete for {0}</value>
   </data>

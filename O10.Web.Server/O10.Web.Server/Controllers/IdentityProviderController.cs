@@ -26,12 +26,13 @@ using O10.Web.Server.Exceptions;
 using System.Collections.ObjectModel;
 using O10.Web.Server.Services;
 using O10.Web.Server.Dtos.IdentityProvider;
+using O10.Client.Common.Exceptions;
 
 namespace O10.Web.Server.Controllers
 {
     [Authorize]
     [ApiController]
-    [Route("[controller]")]
+    [Route("api/[controller]")]
     public class IdentityProviderController : ControllerBase
     {
         private readonly IExecutionContextManager _executionContextManager;
@@ -196,13 +197,28 @@ namespace O10.Web.Server.Controllers
         }
 
         [AllowAnonymous]
-        [HttpGet("AttributesSchema")]
-        public async Task<IActionResult> GetAttributesSchema(long accountId)
+        [HttpGet("AttributesScheme")]
+        public async Task<IActionResult> GetAttributesScheme(long accountId)
         {
             AccountDescriptor account = _accountsService.GetById(accountId);
 
+            if(account == null)
+            {
+                throw new AccountNotFoundException(accountId);
+            }
+
+            if(account.AccountType != AccountType.IdentityProvider)
+            {
+                throw new UnexpectedAccountTypeException(accountId, account.AccountType);
+            }
+
             string issuer = account.PublicSpendKey.ToHexString();
             var (schemeName, alias) = await _assetsService.GetRootAttributeSchemeName(issuer).ConfigureAwait(false);
+            if(schemeName == null)
+            {
+                return Ok(new IdentityAttributesSchemaDto());
+            }
+
             var associated = await _assetsService.GetAssociatedAttributeSchemeNames(issuer).ConfigureAwait(false);
 
             IdentityAttributesSchemaDto schemaDto = new IdentityAttributesSchemaDto
