@@ -20,6 +20,7 @@ using O10.Client.DataLayer.Model;
 using Microsoft.AspNetCore.Http;
 using O10.Web.Server.Exceptions;
 using O10.Client.Common.Exceptions;
+using O10.Crypto.ConfidentialAssets;
 
 namespace O10.Web.Server.Controllers
 {
@@ -153,7 +154,7 @@ namespace O10.Web.Server.Controllers
             }
 
             var persistency = _executionContextManager.ResolveUtxoExecutionServices(bindingKeyRequest.AccountId);
-                persistency.BindingKeySource.SetResult(accountDescriptor.PwdHash);
+                persistency.BindingKeySource.SetResult(ConfidentialAssetsHelper.PasswordHash(bindingKeyRequest.Password));
 
             return Ok();
         }

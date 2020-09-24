@@ -27,6 +27,7 @@ using System.Collections.ObjectModel;
 using O10.Web.Server.Services;
 using O10.Web.Server.Dtos.IdentityProvider;
 using O10.Client.Common.Exceptions;
+using O10.Transactions.Core.DataModel.Transactional;
 
 namespace O10.Web.Server.Controllers
 {
@@ -314,7 +315,7 @@ namespace O10.Web.Server.Controllers
 
                     //byte[] faceImageAssetId = await _assetsService.GenerateAssetId(AttributesSchemes.ATTR_SCHEME_NAME_PASSPORTPHOTO, identityRequest.FaceImageContent, issuer).ConfigureAwait(false);
 
-                    bool sent = TransferAssetToUtxo(
+                    var packet = TransferAssetToUtxo(
                         statePersistency.TransactionsService,
                         new ConfidentialAccount
                         {
@@ -323,7 +324,7 @@ namespace O10.Web.Server.Controllers
                         },
                         rootAssetId);
 
-                    if (!sent)
+                    if (packet == null)
                     {
                         _logger.Error($"[{account.AccountId}]: failed to transfer Root Attribute");
                         return BadRequest();
@@ -419,21 +420,20 @@ namespace O10.Web.Server.Controllers
                     throw new NoRootAttributeSchemeDefinedException(issuer);
                 }
 
+                IEnumerable<IdentitiesScheme> identitiesSchemes = _dataAccessService.GetAttributesSchemeByIssuer(issuer, true);
+
                 string rootAttributeContent = request.Attributes[rootScheme.AttributeSchemeName].Value;
-                byte[] rootAssetId = await _assetsService.GenerateAssetId(rootScheme.AttributeSchemeName, rootAttributeContent, issuer).ConfigureAwait(false);
 
                 Identity identity = _dataAccessService.GetIdentityByAttribute(account.AccountId, rootScheme.AttributeName, rootAttributeContent);
                 if (identity == null)
                 {
                     _dataAccessService.CreateIdentity(account.AccountId,
                                        rootAttributeContent,
-                                       new (string attrName, string content)[] {
-                                           (rootScheme.AttributeName, rootAttributeContent),
-                                           (AttributesSchemes.ATTR_SCHEME_NAME_PASSWORD, rootAssetId.ToHexString())
-                                       });
+                                       request.Attributes.Select(d => (identitiesSchemes.FirstOrDefault(s => s.AttributeSchemeName == d.Key)?.AttributeName, d.Value.Value)).ToArray());
                     identity = _dataAccessService.GetIdentityByAttribute(account.AccountId, rootScheme.AttributeName, rootAttributeContent);
                 }
 
+                byte[] rootAssetId = await _assetsService.GenerateAssetId(rootScheme.AttributeSchemeName, rootAttributeContent, issuer).ConfigureAwait(false);
                 IdentityAttribute rootAttribute = identity.Attributes.FirstOrDefault(a => a.AttributeName == rootScheme.AttributeName);
                 if (!CreateRootAttributeIfNeeded(statePersistency, rootAttribute, rootAssetId))
                 {
@@ -452,9 +452,14 @@ namespace O10.Web.Server.Controllers
                 else
                 {
                     await IssueAssociatedAttributes(
-                                        request.Attributes.Select(kv => (0L, kv.Key, kv.Value.Value, kv.Value.BlindingPointValue, kv.Value.BlindingPointRoot)).Where(e => e.Key != AttributesSchemes.ATTR_SCHEME_NAME_PASSWORD).ToArray(),
-                                        statePersistency.TransactionsService,
-                                        issuer, rootAssetId).ConfigureAwait(false);
+                                request.Attributes
+                                .Where(e => e.Key != rootScheme.AttributeSchemeName)
+                                .Select(kv => 
+                                            (identity.Attributes.FirstOrDefault(a => a.AttributeName == identitiesSchemes.FirstOrDefault(s => s.AttributeSchemeName == kv.Key).AttributeName).AttributeId, 
+                                            kv.Key, kv.Value.Value, kv.Value.BlindingPointValue, kv.Value.BlindingPointRoot))
+                                    .ToArray(),
+                                statePersistency.TransactionsService,
+                                issuer, rootAssetId).ConfigureAwait(false);
                 }
 
                 ConfidentialAccount confidentialAccount = new ConfidentialAccount
@@ -463,9 +468,9 @@ namespace O10.Web.Server.Controllers
                     PublicViewKey = request.PublicViewKey.HexStringToByteArray()
                 };
 
-                bool sent = TransferAssetToUtxo(statePersistency.TransactionsService, confidentialAccount, rootAssetId);
+                var packet = TransferAssetToUtxo(statePersistency.TransactionsService, confidentialAccount, rootAssetId);
 
-                if (!sent)
+                if (packet == null)
                 {
                     _logger.Error($"[{account.AccountId}]: failed to transfer Root Attribute");
                     throw new RootAttributeTransferFailedException();
@@ -476,16 +481,34 @@ namespace O10.Web.Server.Controllers
             {
                 IdentitiesScheme rootScheme = _dataAccessService.GetRootIdentityScheme(issuer);
 
-                await IssueAssociatedAttribute(rootScheme.AttributeSchemeName,
+                IEnumerable<IdentitiesScheme> identitiesSchemes = _dataAccessService.GetAttributesSchemeByIssuer(issuer, true);
+
+                string rootAttributeContent = request.Attributes[rootScheme.AttributeSchemeName].Value;
+
+                Identity identity = _dataAccessService.GetIdentityByAttribute(account.AccountId, rootScheme.AttributeName, rootAttributeContent);
+                if (identity == null)
+                {
+                    _dataAccessService.CreateIdentity(account.AccountId,
+                                       rootAttributeContent,
+                                       request.Attributes.Select(d => (identitiesSchemes.FirstOrDefault(s => s.AttributeSchemeName == d.Key)?.AttributeName, d.Value.Value)).ToArray());
+                    identity = _dataAccessService.GetIdentityByAttribute(account.AccountId, rootScheme.AttributeName, rootAttributeContent);
+                }
+
+                byte[] originatingCommitment = await IssueAssociatedAttribute(rootScheme.AttributeSchemeName,
                                             request.Attributes[rootScheme.AttributeSchemeName].Value,
                                             request.Attributes[rootScheme.AttributeSchemeName].BlindingPointValue,
                                             request.Attributes[rootScheme.AttributeSchemeName].BlindingPointRoot,
                                             issuer,
                                             statePersistency.TransactionsService).ConfigureAwait(false);
+                _dataAccessService.UpdateIdentityAttributeCommitment(identity.Attributes.FirstOrDefault(a => a.AttributeName == rootScheme.AttributeName).AttributeId, originatingCommitment);
 
                 byte[] rootAssetId = _assetsService.GenerateAssetId(rootScheme.IdentitiesSchemeId, request.Attributes[rootScheme.AttributeSchemeName].Value);
                 await IssueAssociatedAttributes(
-                                    request.Attributes.Select(kv => (0L, kv.Key, kv.Value.Value, kv.Value.BlindingPointValue, kv.Value.BlindingPointRoot)).Where(e => e.Key != AttributesSchemes.ATTR_SCHEME_NAME_PASSWORD && (rootScheme == null || e.Key != rootScheme.AttributeSchemeName)).ToArray(),
+                                    request.Attributes
+                                        .Where(e => e.Key != AttributesSchemes.ATTR_SCHEME_NAME_PASSWORD && (rootScheme == null || e.Key != rootScheme.AttributeSchemeName))
+                                        .Select(kv => (
+                                            identity.Attributes.FirstOrDefault(a => a.AttributeName == identitiesSchemes.FirstOrDefault(s => s.AttributeSchemeName == kv.Key).AttributeName).AttributeId,
+                                            kv.Key, kv.Value.Value, kv.Value.BlindingPointValue, kv.Value.BlindingPointRoot)).ToArray(),
                                     statePersistency.TransactionsService,
                                     issuer, rootAssetId).ConfigureAwait(false);
             }
@@ -655,11 +678,9 @@ namespace O10.Web.Server.Controllers
             return true;
         }
 
-        private bool TransferAssetToUtxo(IStateTransactionsService transactionsService, ConfidentialAccount account, byte[] rootAssetId)
+        private TransferAssetToUtxo TransferAssetToUtxo(IStateTransactionsService transactionsService, ConfidentialAccount account, byte[] rootAssetId)
         {
-            bool sent = transactionsService.TransferAssetToUtxo(rootAssetId, account);
-
-            return sent;
+            return transactionsService.TransferAssetToUtxo(rootAssetId, account);
         }
     }
 }

@@ -23,7 +23,6 @@ using O10.Web.Server.Dtos.User;
 
 namespace O10.Web.Server.Controllers
 {
-    [Authorize]
     [ApiController]
     [Route("api/[controller]")]
     public class SpUsersController : ControllerBase

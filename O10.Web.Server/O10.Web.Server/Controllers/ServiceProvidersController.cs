@@ -31,7 +31,6 @@ using O10.Client.Web.Common.Dtos.SamlIdp;
 
 namespace O10.Web.Server.Controllers
 {
-    [Authorize]
     [ApiController]
     [Route("api/[controller]")]
     public class ServiceProvidersController : ControllerBase

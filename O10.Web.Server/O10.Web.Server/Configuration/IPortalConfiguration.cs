@@ -7,5 +7,7 @@ namespace O10.Web.Server.Configuration
         string FacePersonGroupId { get; set; }
         bool DemoMode { get; set; }
         string DemoPassword { get; set; }
+
+        string IdentityProviderUri { get; set; }
     }
 }

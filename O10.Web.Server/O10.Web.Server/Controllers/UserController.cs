@@ -41,10 +41,11 @@ using O10.Core.HashCalculations;
 using O10.Client.Common.Entities;
 using O10.Web.Server.Services;
 using System.Diagnostics;
+using Microsoft.AspNetCore.Http;
+using O10.Web.Server.Configuration;
 
 namespace O10.Web.Server.Controllers
 {
-    [Authorize]
     [ApiController]
     [Route("api/[controller]")]
     public class UserController : ControllerBase
@@ -61,6 +62,7 @@ namespace O10.Web.Server.Controllers
         private readonly IRestApiConfiguration _restApiConfiguration;
         private readonly IHashCalculation _hashCalculation;
         private readonly ILogger _logger;
+        private readonly IPortalConfiguration _portalConfiguration;
 
         public UserController(IDocumentSignatureVerifier documentSignatureVerifier,
                               IAccountsService accountsService,
@@ -85,6 +87,7 @@ namespace O10.Web.Server.Controllers
             _schemeResolverService = schemeResolverService;
             _idenitiesHubContext = idenitiesHubContext;
             _restApiConfiguration = configurationService.Get<IRestApiConfiguration>();
+            _portalConfiguration = configurationService.Get<IPortalConfiguration>();
             _hashCalculation = hashCalculationsRepository.Create(Globals.DEFAULT_HASH);
             _logger = loggerService.GetLogger(nameof(UserController));
         }
@@ -706,6 +709,90 @@ namespace O10.Web.Server.Controllers
             }
 
             return BadRequest(error);
+        }
+
+        [HttpPost("AttributesIssuance")]
+        public async Task<IActionResult> RequestForAttributesIssuance(long accountId, AttributesIssuanceRequestDto attributesIssuanceRequest)
+        {
+            var account = _accountsService.GetById(accountId);
+            var persistency = _executionContextManager.ResolveUtxoExecutionServices(accountId);
+            var attributes = attributesIssuanceRequest.AttributeValues;
+            var issuer = attributesIssuanceRequest.Issuer;
+
+            (string rootScheme, string _) = await _assetsService.GetRootAttributeSchemeName(attributesIssuanceRequest.Issuer).ConfigureAwait(false);
+            byte[] blindingPointRootToRoot = null;
+
+            if (attributesIssuanceRequest.MasterRootAttributeId != null)
+            {
+                var rootAttributeMaster = _dataAccessService.GetUserRootAttribute(attributesIssuanceRequest.MasterRootAttributeId.Value);
+                byte[] blindingPointRoot = _assetsService.GetBlindingPoint(await persistency.BindingKeySource.Task.ConfigureAwait(false), rootAttributeMaster.AssetId);
+                blindingPointRootToRoot = _assetsService.GetCommitmentBlindedByPoint(rootAttributeMaster.AssetId, blindingPointRoot);
+            }
+
+
+            string rootAttributeContent = attributes.FirstOrDefault(a => a.Key == rootScheme).Value;
+            byte[] rootAssetId = await _assetsService.GenerateAssetId(rootScheme, rootAttributeContent, issuer).ConfigureAwait(false);
+
+            IssueAttributesRequestDTO request = new IssueAttributesRequestDTO
+            {
+                Attributes = await GenerateAttributeValuesAsync(attributes, rootAssetId, rootScheme, issuer, blindingPointRootToRoot).ConfigureAwait(false),
+                PublicSpendKey = attributesIssuanceRequest.MasterRootAttributeId == null ? account.PublicSpendKey.ToHexString() : null,
+                PublicViewKey = attributesIssuanceRequest.MasterRootAttributeId == null ? account.PublicViewKey.ToHexString() : null,
+            };
+
+            if (attributesIssuanceRequest.MasterRootAttributeId == null)
+            {
+                // Need only in case when _rootAttribute is null, i.e. BlinkID is the Root Attribute
+                // =======================================================================================================================
+                _assetsService.GetBlindingPoint(await persistency.BindingKeySource.Task.ConfigureAwait(false), rootAssetId, out byte[] blindingPoint, out byte[] blindingFactor);
+                byte[] protectionAssetId = await _assetsService.GenerateAssetId(AttributesSchemes.ATTR_SCHEME_NAME_PASSWORD, rootAssetId.ToHexString(), issuer).ConfigureAwait(false);
+                byte[] protectionAssetNonBlindedCommitment = ConfidentialAssetsHelper.GetNonblindedAssetCommitment(protectionAssetId);
+                byte[] protectionAssetCommitment = ConfidentialAssetsHelper.SumCommitments(protectionAssetNonBlindedCommitment, blindingPoint);
+                byte[] sessionBlindingFactor = ConfidentialAssetsHelper.GetRandomSeed();
+                byte[] sessionCommitment = ConfidentialAssetsHelper.GetAssetCommitment(sessionBlindingFactor, protectionAssetId);
+                byte[] diffBlindingFactor = ConfidentialAssetsHelper.GetDifferentialBlindingFactor(sessionBlindingFactor, blindingFactor);
+                SurjectionProof surjectionProof = ConfidentialAssetsHelper.CreateSurjectionProof(sessionCommitment, new byte[][] { protectionAssetCommitment }, 0, diffBlindingFactor);
+                // =======================================================================================================================
+
+                byte[] bindingKey = await persistency.BindingKeySource.Task.ConfigureAwait(false);
+                byte[] blindingPointAssociatedToParent = _assetsService.GetBlindingPoint(bindingKey, rootAssetId);
+                request.Attributes.Add(AttributesSchemes.ATTR_SCHEME_NAME_PASSWORD, new IssueAttributesRequestDTO.AttributeValue
+                {
+                    BlindingPointValue = blindingPoint,
+                    BlindingPointRoot = blindingPointAssociatedToParent,
+                    Value = rootAssetId.ToHexString()
+                });
+                request.SessionCommitment = sessionCommitment.ToHexString();
+                request.SignatureE = surjectionProof.Rs.E.ToHexString();
+                request.SignatureS = surjectionProof.Rs.S[0].ToHexString();
+            }
+
+            var attributeValues = 
+                await _portalConfiguration
+                .IdentityProviderUri
+                .AppendPathSegments("IssueIdpAttributes", issuer)
+                .PostJsonAsync(request)
+                .ReceiveJson<IEnumerable<AttributeValue>>()
+                .ConfigureAwait(false);
+
+            return Ok();
+
+            async Task<Dictionary<string, IssueAttributesRequestDTO.AttributeValue>> GenerateAttributeValuesAsync(Dictionary<string, string> attributes, byte[] rootAssetId, string rootSchemeName, string issuer, byte[] blindingPointRootToRoot)
+            {
+                byte[] bindingKey = await persistency.BindingKeySource.Task.ConfigureAwait(false);
+                byte[] blindingPointAssociatedToParent = _assetsService.GetBlindingPoint(bindingKey, rootAssetId);
+                return attributes
+                        .Select(kv =>
+                            new KeyValuePair<string, IssueAttributesRequestDTO.AttributeValue>(
+                                kv.Key,
+                                new IssueAttributesRequestDTO.AttributeValue
+                                {
+                                    Value = kv.Value,
+                                    BlindingPointValue = _assetsService.GetBlindingPoint(bindingKey, rootAssetId, AsyncUtil.RunSync(async () => await _assetsService.GenerateAssetId(kv.Key, kv.Value, issuer).ConfigureAwait(false))),
+                                    BlindingPointRoot = kv.Key == rootSchemeName ? blindingPointRootToRoot : blindingPointAssociatedToParent
+                                }))
+                        .ToDictionary(kv => kv.Key, kv => kv.Value);
+            }
         }
 
         [HttpPost("RequestForIdentity")]
