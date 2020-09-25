@@ -5,8 +5,10 @@ import NFT from './pages/NFT';
 import KYC from './pages/KYC';
 import User1 from './pages/User1';
 import User2 from './pages/User2';
+import User3 from './pages/User3';
 import Service from './pages/Service';
 import Identity from './pages/Identity';
+import Identity2 from './pages/identity2';
 
 // import {ProviderOrSignerRequest} from './shared/initialize';
 import {
@@ -542,6 +544,24 @@ class App extends Component<MyProps, MyState>{
                       display: 'inline', 
                       background: "black", 
                       color: "white", 
+                      marginRight: '20px',
+                      padding: '5px'
+                    }}
+                  >
+                    <Link to="/user3"
+                      style={{
+                        textDecoration: 'none',
+                        color: 'white'
+                      }}
+                    >
+                      User3
+                    </Link>
+                  </li>
+                  <li 
+                    style={{
+                      display: 'inline', 
+                      background: "black", 
+                      color: "white", 
                       padding: '5px', 
                       marginRight: '20px'
                     }} 
@@ -571,6 +591,25 @@ class App extends Component<MyProps, MyState>{
                       }}
                     >
                       Identity Provider
+                    </Link>
+                  </li>
+
+                  <li 
+                    style={{
+                      display: 'inline', 
+                      background: "black", 
+                      color: "white", 
+                      padding: '5px', 
+                      marginRight: '20px'
+                    }}
+                  >
+                    <Link to="/identity2"
+                      style={{
+                        textDecoration: 'none',
+                        color: 'white'
+                      }}
+                    >
+                      Identity Provider 2
                     </Link>
                   </li>
                 </ul>
@@ -603,11 +642,17 @@ class App extends Component<MyProps, MyState>{
               <Route path="/user2">
                 <User2/>
               </Route>
+              <Route path="/user3">
+                <User3/>
+              </Route>
               <Route path="/service">
                 <Service/>
               </Route>
               <Route path="/identity">
                 <Identity/>
+              </Route>
+              <Route path="/identity2">
+                <Identity2/>
               </Route>
             </Switch>
           </div>
