@@ -178,6 +178,15 @@ namespace O10.Web.Server.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to A value for the mandatory attribute &apos;{0}&apos; was not provided.
+        /// </summary>
+        internal static string ERR_MANDATORY_ATTRIBUTE_NOT_PROVIDED {
+            get {
+                return ResourceManager.GetString("ERR_MANDATORY_ATTRIBUTE_NOT_PROVIDED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to No Root Attribute Scheme defined for the issuer &apos;{0}&apos;..
         /// </summary>
         internal static string ERR_NO_ROOT_SCHEME_DEFINED {

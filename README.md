@@ -18,7 +18,7 @@ $ docker-compose up -d
 
 Check if portal, gateway and node are up and running and are connected to each other:
 ```
-$ curl --location --request GET 'http://localhost:5003/Diagnostic'
+$ curl --location --request GET 'http://localhost:5003/api/Diagnostic'
 ```
 
 There should be returned response as follows:

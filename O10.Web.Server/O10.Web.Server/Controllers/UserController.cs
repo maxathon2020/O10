@@ -775,7 +775,7 @@ namespace O10.Web.Server.Controllers
                 .ReceiveJson<IEnumerable<AttributeValue>>()
                 .ConfigureAwait(false);
 
-            return Ok();
+            return Ok(attributeValues);
 
             async Task<Dictionary<string, IssueAttributesRequestDTO.AttributeValue>> GenerateAttributeValuesAsync(Dictionary<string, string> attributes, byte[] rootAssetId, string rootSchemeName, string issuer, byte[] blindingPointRootToRoot)
             {

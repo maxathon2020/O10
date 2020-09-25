@@ -156,6 +156,9 @@
   <data name="ERR_INHERENCE_REGISTRATION_PROOFS_INCORRECT" xml:space="preserve">
     <value>Inherence registration proofs are incorrect</value>
   </data>
+  <data name="ERR_MANDATORY_ATTRIBUTE_NOT_PROVIDED" xml:space="preserve">
+    <value>A value for the mandatory attribute '{0}' was not provided</value>
+  </data>
   <data name="ERR_NO_ROOT_SCHEME_DEFINED" xml:space="preserve">
     <value>No Root Attribute Scheme defined for the issuer '{0}'.</value>
   </data>

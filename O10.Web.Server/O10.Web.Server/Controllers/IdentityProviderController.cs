@@ -28,6 +28,9 @@ using O10.Web.Server.Services;
 using O10.Web.Server.Dtos.IdentityProvider;
 using O10.Client.Common.Exceptions;
 using O10.Transactions.Core.DataModel.Transactional;
+using Microsoft.AspNetCore.SignalR;
+using O10.Client.Web.Common.Hubs;
+using System.Collections;
 
 namespace O10.Web.Server.Controllers
 {
@@ -42,6 +45,7 @@ namespace O10.Web.Server.Controllers
         private readonly IIdentityAttributesService _identityAttributesService;
         private readonly IAccountsServiceEx _accountsService;
         private readonly ITranslatorsRepository _translatorsRepository;
+        private readonly IHubContext<IdentitiesHub> _idenitiesHubContext;
         private readonly ILogger _logger;
 
         public IdentityProviderController(
@@ -51,6 +55,7 @@ namespace O10.Web.Server.Controllers
             IIdentityAttributesService identityAttributesService,
             IAccountsServiceEx accountsService,
             ITranslatorsRepository translatorsRepository,
+            IHubContext<IdentitiesHub> idenitiesHubContext,
             ILoggerService loggerService)
         {
             _executionContextManager = executionContextManager;
@@ -59,6 +64,7 @@ namespace O10.Web.Server.Controllers
             _identityAttributesService = identityAttributesService;
             _accountsService = accountsService;
             _translatorsRepository = translatorsRepository;
+            _idenitiesHubContext = idenitiesHubContext;
             _logger = loggerService.GetLogger(nameof(IdentityProviderController));
         }
 
@@ -214,18 +220,36 @@ namespace O10.Web.Server.Controllers
             }
 
             string issuer = account.PublicSpendKey.ToHexString();
-            var (schemeName, alias) = await _assetsService.GetRootAttributeSchemeName(issuer).ConfigureAwait(false);
-            if(schemeName == null)
+            IEnumerable<AttributeDefinition> attributeDefinitions = _dataAccessService.GetAttributesSchemeByIssuer(issuer, true)
+                            .Select(a => new AttributeDefinition
+                            {
+                                SchemeId = a.IdentitiesSchemeId,
+                                AttributeName = a.AttributeName,
+                                SchemeName = a.AttributeSchemeName,
+                                Alias = a.Alias,
+                                Description = a.Description,
+                                IsActive = a.IsActive,
+                                IsRoot = a.CanBeRoot
+                            });
+
+            IdentityAttributeSchemaDto rootAttributeScheme = null;
+            var rootAttrDefinition = attributeDefinitions.FirstOrDefault(a => a.IsRoot);
+            if(rootAttrDefinition != null)
             {
-                return Ok(new IdentityAttributesSchemaDto());
+                rootAttributeScheme = new IdentityAttributeSchemaDto
+                {
+                    AttributeName = rootAttrDefinition.AttributeName,
+                    Alias = rootAttrDefinition.Alias
+                };
             }
-
-            var associated = await _assetsService.GetAssociatedAttributeSchemeNames(issuer).ConfigureAwait(false);
-
+            
             IdentityAttributesSchemaDto schemaDto = new IdentityAttributesSchemaDto
             {
-                RootAttribute = new IdentityAttributeSchemaDto { SchemeName = schemeName, Name = alias },
-                AssociatedAttributes = associated.Select(a => new IdentityAttributeSchemaDto { SchemeName = a.schemeName, Name = a.alias }).ToList()
+                RootAttribute = rootAttributeScheme,
+                AssociatedAttributes = attributeDefinitions
+                    .Where(a => !a.IsRoot)
+                    .Select(a => 
+                        new IdentityAttributeSchemaDto { AttributeName = a.AttributeName, Alias = a.Alias }).ToList()
             };
 
             return Ok(schemaDto);
@@ -246,107 +270,109 @@ namespace O10.Web.Server.Controllers
             return registrationDetails;
         }
 
-        [AllowAnonymous]
-        [HttpPost("ProcessRootIdentityRequest")]
-        public async Task<ActionResult<IEnumerable<AttributeValue>>> ProcessRootIdentityRequest(string issuer, [FromBody] IdentityBaseData sessionData)
-        {
-            try
-            {
-                _logger.LogIfDebug(() => $"{nameof(ProcessRootIdentityRequest)} of {issuer} with sessionData: {JsonConvert.SerializeObject(sessionData)}");
-                string sessionDataJson = sessionData != null ? JsonConvert.SerializeObject(sessionData) : "NULL";
-                _logger.Info($"{nameof(ProcessRootIdentityRequest)}: {nameof(issuer)} = {issuer}, {nameof(sessionData)} = {sessionDataJson}");
+        //[AllowAnonymous]
+        //[HttpPost("ProcessRootIdentityRequest")]
+        //public async Task<ActionResult<IEnumerable<AttributeValue>>> ProcessRootIdentityRequest(string issuer, [FromBody] IdentityBaseData sessionData)
+        //{
+        //    try
+        //    {
+        //        _logger.LogIfDebug(() => $"{nameof(ProcessRootIdentityRequest)} of {issuer} with sessionData: {JsonConvert.SerializeObject(sessionData)}");
+        //        string sessionDataJson = sessionData != null ? JsonConvert.SerializeObject(sessionData) : "NULL";
+        //        _logger.Info($"{nameof(ProcessRootIdentityRequest)}: {nameof(issuer)} = {issuer}, {nameof(sessionData)} = {sessionDataJson}");
 
-                AccountDescriptor account = _accountsService.GetByPublicKey(issuer.HexStringToByteArray());
-                StatePersistency statePersistency = _executionContextManager.ResolveStateExecutionServices(account.AccountId);
-                byte[] blindingPoint = sessionData.BlindingPoint.HexStringToByteArray();
+        //        AccountDescriptor account = _accountsService.GetByPublicKey(issuer.HexStringToByteArray());
+        //        StatePersistency statePersistency = _executionContextManager.ResolveStateExecutionServices(account.AccountId);
+        //        byte[] blindingPoint = sessionData.BlindingPoint.HexStringToByteArray();
 
-                IdentitiesScheme rootScheme = _dataAccessService.GetRootIdentityScheme(issuer);
-                if (rootScheme == null)
-                {
-                    throw new NoRootAttributeSchemeDefinedException(issuer);
-                }
+        //        IdentitiesScheme rootScheme = _dataAccessService.GetRootIdentityScheme(issuer);
+        //        if (rootScheme == null)
+        //        {
+        //            throw new NoRootAttributeSchemeDefinedException(issuer);
+        //        }
 
-                IEnumerable<IdentitiesScheme> identitiesSchemes = _dataAccessService.GetAttributesSchemeByIssuer(issuer, true);
-                Identity identity = _dataAccessService.GetIdentityByAttribute(account.AccountId, rootScheme.AttributeName, sessionData.Content);
+        //        IEnumerable<IdentitiesScheme> identitiesSchemes = _dataAccessService.GetAttributesSchemeByIssuer(issuer, true);
+        //        Identity identity = _dataAccessService.GetIdentityByAttribute(account.AccountId, rootScheme.AttributeName, sessionData.Content);
 
-                if (identity == null)
-                {
-                    string message = $"Failed to find person with {rootScheme.AttributeName} {sessionData.Content} at account {account.AccountId}";
-                    _logger.Warning(message);
-                    return BadRequest(new { Message = message });
-                }
+        //        if (identity == null)
+        //        {
+        //            string message = $"Failed to find person with {rootScheme.AttributeName} {sessionData.Content} at account {account.AccountId}";
+        //            _logger.Warning(message);
+        //            return BadRequest(new { Message = message });
+        //        }
 
-                bool proceed = !identitiesSchemes.Any(s => s.AttributeSchemeName == AttributesSchemes.ATTR_SCHEME_NAME_PASSPORTPHOTO) || await VerifyFaceImage(sessionData.ImageContent, sessionData.Content, issuer).ConfigureAwait(false);
+        //        bool proceed = !identitiesSchemes.Any(s => s.AttributeSchemeName == AttributesSchemes.ATTR_SCHEME_NAME_PASSPORTPHOTO) || await VerifyFaceImage(sessionData.ImageContent, sessionData.Content, issuer).ConfigureAwait(false);
 
-                if (proceed)
-                {
-                    byte[] rootAssetId = await _assetsService.GenerateAssetId(rootScheme.AttributeSchemeName, sessionData.Content, issuer).ConfigureAwait(false);
-                    IdentityAttribute rootAttribute = identity.Attributes.FirstOrDefault(a => a.AttributeName == rootScheme.AttributeName);
-                    if (!CreateRootAttributeIfNeeded(statePersistency, rootAttribute, rootAssetId))
-                    {
-                        var protectionAttribute = identity.Attributes.FirstOrDefault(a => a.AttributeName == AttributesSchemes.ATTR_SCHEME_NAME_PASSWORD);
-                        bool res = VerifyProtectionAttribute(protectionAttribute,
-                                           sessionData.SignatureE.HexStringToByteArray(),
-                                           sessionData.SignatureS.HexStringToByteArray(),
-                                           sessionData.SessionCommitment.HexStringToByteArray());
+        //        if (proceed)
+        //        {
+        //            byte[] rootAssetId = await _assetsService.GenerateAssetId(rootScheme.AttributeSchemeName, sessionData.Content, issuer).ConfigureAwait(false);
+        //            IdentityAttribute rootAttribute = identity.Attributes.FirstOrDefault(a => a.AttributeName == rootScheme.AttributeName);
+        //            if (!CreateRootAttributeIfNeeded(statePersistency, rootAttribute, rootAssetId))
+        //            {
+        //                var protectionAttribute = identity.Attributes.FirstOrDefault(a => a.AttributeName == AttributesSchemes.ATTR_SCHEME_NAME_PASSWORD);
+        //                bool res = VerifyProtectionAttribute(protectionAttribute,
+        //                                   sessionData.SignatureE.HexStringToByteArray(),
+        //                                   sessionData.SignatureS.HexStringToByteArray(),
+        //                                   sessionData.SessionCommitment.HexStringToByteArray());
 
-                        if (!res)
-                        {
-                            const string message = "Failed to verify Surjection Proofs";
-                            _logger.Warning($"[{account.AccountId}]: " + message);
-                            return BadRequest(message);
-                        }
-                    }
-                    else
-                    {
-                        await IssueAssociatedAttributes(
-                            identity.Attributes.Where(a => a.AttributeName != rootScheme.AttributeName)
-                                .Select(a =>
-                                    (
-                                        a.AttributeId,
-                                        identitiesSchemes.FirstOrDefault(s => s.AttributeName == a.AttributeName).AttributeSchemeName,
-                                        a.Content,
-                                        blindingPoint,
-                                        blindingPoint))
-                                .ToArray(),
-                            statePersistency.TransactionsService,
-                            issuer, rootAssetId).ConfigureAwait(false);
-                    }
+        //                if (!res)
+        //                {
+        //                    const string message = "Failed to verify Surjection Proofs";
+        //                    _logger.Warning($"[{account.AccountId}]: " + message);
+        //                    return BadRequest(message);
+        //                }
+        //            }
+        //            else
+        //            {
+        //                await IssueAssociatedAttributes(
+        //                    attributeIssuanceDetails
+        //                        .ToDictionary(d => identity.Attributes.First(a => a.AttributeName == d.Definition.AttributeName).AttributeId, d => d),
+        //                    identity.Attributes.Where(a => a.AttributeName != rootScheme.AttributeName)
+        //                        .Select(a =>
+        //                            (
+        //                                a.AttributeId,
+        //                                identitiesSchemes.FirstOrDefault(s => s.AttributeName == a.AttributeName).AttributeSchemeName,
+        //                                a.Content,
+        //                                blindingPoint,
+        //                                blindingPoint))
+        //                        .ToArray(),
+        //                    statePersistency.TransactionsService,
+        //                    issuer, rootAssetId).ConfigureAwait(false);
+        //            }
 
-                    //byte[] faceImageAssetId = await _assetsService.GenerateAssetId(AttributesSchemes.ATTR_SCHEME_NAME_PASSPORTPHOTO, identityRequest.FaceImageContent, issuer).ConfigureAwait(false);
+        //            //byte[] faceImageAssetId = await _assetsService.GenerateAssetId(AttributesSchemes.ATTR_SCHEME_NAME_PASSPORTPHOTO, identityRequest.FaceImageContent, issuer).ConfigureAwait(false);
 
-                    var packet = TransferAssetToUtxo(
-                        statePersistency.TransactionsService,
-                        new ConfidentialAccount
-                        {
-                            PublicSpendKey = sessionData.PublicSpendKey.HexStringToByteArray(),
-                            PublicViewKey = sessionData.PublicViewKey.HexStringToByteArray()
-                        },
-                        rootAssetId);
+        //            var packet = TransferAssetToUtxo(
+        //                statePersistency.TransactionsService,
+        //                new ConfidentialAccount
+        //                {
+        //                    PublicSpendKey = sessionData.PublicSpendKey.HexStringToByteArray(),
+        //                    PublicViewKey = sessionData.PublicViewKey.HexStringToByteArray()
+        //                },
+        //                rootAssetId);
 
-                    if (packet == null)
-                    {
-                        _logger.Error($"[{account.AccountId}]: failed to transfer Root Attribute");
-                        return BadRequest();
-                    }
+        //            if (packet == null)
+        //            {
+        //                _logger.Error($"[{account.AccountId}]: failed to transfer Root Attribute");
+        //                return BadRequest();
+        //            }
 
-                    IEnumerable<AttributeValue> attributeValues = GetAttributeValues(issuer, identity);
+        //            IEnumerable<AttributeValue> attributeValues = GetAttributeValues(issuer, identity);
 
-                    return Ok(attributeValues);
-                }
-                else
-                {
-                    const string message = "Captured face does not match to registered one";
-                    _logger.Warning($"[{account.AccountId}]: " + message);
-                    return BadRequest(new { Message = message });
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.Error($"[{issuer}]: Failed ProcessRootIdentityRequest\r\nSessionData={(sessionData != null ? JsonConvert.SerializeObject(sessionData) : null)}", ex);
-                throw;
-            }
-        }
+        //            return Ok(attributeValues);
+        //        }
+        //        else
+        //        {
+        //            const string message = "Captured face does not match to registered one";
+        //            _logger.Warning($"[{account.AccountId}]: " + message);
+        //            return BadRequest(new { Message = message });
+        //        }
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        _logger.Error($"[{issuer}]: Failed ProcessRootIdentityRequest\r\nSessionData={(sessionData != null ? JsonConvert.SerializeObject(sessionData) : null)}", ex);
+        //        throw;
+        //    }
+        //}
 
         [AllowAnonymous]
         [HttpPost("IssueIdpAttributes/{issuer}")]
@@ -372,16 +398,26 @@ namespace O10.Web.Server.Controllers
                     IsRoot = a.CanBeRoot
                 });
 
-            ValidateNotSupportedAttributes(request, attributeDefinitions);
+            if (!attributeDefinitions.Any(a => a.IsRoot))
+            {
+                throw new NoRootAttributeSchemeDefinedException(issuer);
+            }
 
+            var issuanceInputDetails = GetValidatedIssuanceDetails(request, attributeDefinitions);
+
+            Identity identity = CreateIdentityInDb(account, issuanceInputDetails);
+
+            IssuanceDetailsDto issuanceDetails;
             if (!string.IsNullOrEmpty(request.PublicSpendKey) && !string.IsNullOrEmpty(request.PublicViewKey))
             {
-                await IssueIdpAttributesAsRoot(issuer, request, account, statePersistency).ConfigureAwait(false);
+                issuanceDetails = await IssueIdpAttributesAsRoot(issuer, request, identity, issuanceInputDetails, account, statePersistency).ConfigureAwait(false);
             }
             else
             {
-                await IssueIdpAttributesAsAssociated(issuer, request, statePersistency).ConfigureAwait(false);
+                issuanceDetails = await IssueIdpAttributesAsAssociated(issuer, request, identity, issuanceInputDetails, statePersistency).ConfigureAwait(false);
             }
+
+            await _idenitiesHubContext.Clients.Group(account.AccountId.ToString()).SendAsync("RequestForIssuance", issuanceDetails);
 
             var attributeValues = FillAttributeValues(request, attributeDefinitions);
 
@@ -408,33 +444,22 @@ namespace O10.Web.Server.Controllers
                 return new ReadOnlyCollection<AttributeValue>(attributeValues);
             }
 
-            async Task IssueIdpAttributesAsRoot(
+            async Task<IssuanceDetailsDto> IssueIdpAttributesAsRoot(
                 string issuer,
-                IssueAttributesRequestDTO request,
+                IdentityBaseData request,
+                Identity identity,
+                IEnumerable<AttributeIssuanceDetails> attributeIssuanceDetails,
                 AccountDescriptor account,
                 StatePersistency statePersistency)
             {
-                IdentitiesScheme rootScheme = _dataAccessService.GetRootIdentityScheme(issuer);
-                if (rootScheme == null)
-                {
-                    throw new NoRootAttributeSchemeDefinedException(issuer);
-                }
+                IssuanceDetailsDto issuanceDetails = new IssuanceDetailsDto();
 
                 IEnumerable<IdentitiesScheme> identitiesSchemes = _dataAccessService.GetAttributesSchemeByIssuer(issuer, true);
 
-                string rootAttributeContent = request.Attributes[rootScheme.AttributeSchemeName].Value;
+                var rootAttributeDetails = attributeIssuanceDetails.First(a => a.Definition.IsRoot);
 
-                Identity identity = _dataAccessService.GetIdentityByAttribute(account.AccountId, rootScheme.AttributeName, rootAttributeContent);
-                if (identity == null)
-                {
-                    _dataAccessService.CreateIdentity(account.AccountId,
-                                       rootAttributeContent,
-                                       request.Attributes.Select(d => (identitiesSchemes.FirstOrDefault(s => s.AttributeSchemeName == d.Key)?.AttributeName, d.Value.Value)).ToArray());
-                    identity = _dataAccessService.GetIdentityByAttribute(account.AccountId, rootScheme.AttributeName, rootAttributeContent);
-                }
-
-                byte[] rootAssetId = await _assetsService.GenerateAssetId(rootScheme.AttributeSchemeName, rootAttributeContent, issuer).ConfigureAwait(false);
-                IdentityAttribute rootAttribute = identity.Attributes.FirstOrDefault(a => a.AttributeName == rootScheme.AttributeName);
+                byte[] rootAssetId = await _assetsService.GenerateAssetId(rootAttributeDetails.Definition.SchemeName, rootAttributeDetails.Value.Value, issuer).ConfigureAwait(false);
+                IdentityAttribute rootAttribute = identity.Attributes.FirstOrDefault(a => a.AttributeName == rootAttributeDetails.Definition.AttributeName);
                 if (!CreateRootAttributeIfNeeded(statePersistency, rootAttribute, rootAssetId))
                 {
                     var protectionAttribute = identity.Attributes.FirstOrDefault(a => a.AttributeName == AttributesSchemes.ATTR_SCHEME_NAME_PASSWORD);
@@ -451,15 +476,12 @@ namespace O10.Web.Server.Controllers
                 }
                 else
                 {
-                    await IssueAssociatedAttributes(
-                                request.Attributes
-                                .Where(e => e.Key != rootScheme.AttributeSchemeName)
-                                .Select(kv => 
-                                            (identity.Attributes.FirstOrDefault(a => a.AttributeName == identitiesSchemes.FirstOrDefault(s => s.AttributeSchemeName == kv.Key).AttributeName).AttributeId, 
-                                            kv.Key, kv.Value.Value, kv.Value.BlindingPointValue, kv.Value.BlindingPointRoot))
-                                    .ToArray(),
-                                statePersistency.TransactionsService,
-                                issuer, rootAssetId).ConfigureAwait(false);
+                    issuanceDetails.AssociatedAttributes
+                        = await IssueAssociatedAttributes(
+                            attributeIssuanceDetails.Where(a => !a.Definition.IsRoot)
+                                .ToDictionary(d => identity.Attributes.First(a => a.AttributeName == d.Definition.AttributeName).AttributeId, d => d),
+                            statePersistency.TransactionsService,
+                            issuer, rootAssetId).ConfigureAwait(false);
                 }
 
                 ConfidentialAccount confidentialAccount = new ConfidentialAccount
@@ -475,45 +497,52 @@ namespace O10.Web.Server.Controllers
                     _logger.Error($"[{account.AccountId}]: failed to transfer Root Attribute");
                     throw new RootAttributeTransferFailedException();
                 }
+
+                issuanceDetails.RootAttribute = new IssuanceDetailsDto.IssuanceDetailsRoot
+                {
+                    AttributeName = rootAttribute.AttributeName,
+                    OriginatingCommitment = packet.SurjectionProof.AssetCommitments[0].ToHexString(),
+                    AssetCommitment = packet.TransferredAsset.AssetCommitment.ToHexString(),
+                    SurjectionProof = $"{packet.SurjectionProof.Rs.E.ToHexString()}{packet.SurjectionProof.Rs.S[0].ToHexString()}"
+                };
+
+                return issuanceDetails;
             }
 
-            async Task IssueIdpAttributesAsAssociated(string issuer, IssueAttributesRequestDTO request, StatePersistency statePersistency)
+            async Task<IssuanceDetailsDto> IssueIdpAttributesAsAssociated(
+                                                string issuer,
+                                                IdentityBaseData request,
+                                                Identity identity,
+                                                IEnumerable<AttributeIssuanceDetails> attributeIssuanceDetails,
+                                                StatePersistency statePersistency)
             {
+                IssuanceDetailsDto issuanceDetails = new IssuanceDetailsDto();
+
                 IdentitiesScheme rootScheme = _dataAccessService.GetRootIdentityScheme(issuer);
 
                 IEnumerable<IdentitiesScheme> identitiesSchemes = _dataAccessService.GetAttributesSchemeByIssuer(issuer, true);
+                var rootAttributeDetails = attributeIssuanceDetails.First(a => a.Definition.IsRoot);
 
-                string rootAttributeContent = request.Attributes[rootScheme.AttributeSchemeName].Value;
+                var packet = await IssueAssociatedAttribute(
+                                        rootScheme.AttributeSchemeName,
+                                        rootAttributeDetails.Value.Value,
+                                        rootAttributeDetails.Value.BlindingPointValue,
+                                        rootAttributeDetails.Value.BlindingPointRoot,
+                                        issuer,
+                                        statePersistency.TransactionsService).ConfigureAwait(false);
+                _dataAccessService.UpdateIdentityAttributeCommitment(identity.Attributes.FirstOrDefault(a => a.AttributeName == rootScheme.AttributeName).AttributeId, packet.AssetCommitment);
 
-                Identity identity = _dataAccessService.GetIdentityByAttribute(account.AccountId, rootScheme.AttributeName, rootAttributeContent);
-                if (identity == null)
-                {
-                    _dataAccessService.CreateIdentity(account.AccountId,
-                                       rootAttributeContent,
-                                       request.Attributes.Select(d => (identitiesSchemes.FirstOrDefault(s => s.AttributeSchemeName == d.Key)?.AttributeName, d.Value.Value)).ToArray());
-                    identity = _dataAccessService.GetIdentityByAttribute(account.AccountId, rootScheme.AttributeName, rootAttributeContent);
-                }
-
-                byte[] originatingCommitment = await IssueAssociatedAttribute(rootScheme.AttributeSchemeName,
-                                            request.Attributes[rootScheme.AttributeSchemeName].Value,
-                                            request.Attributes[rootScheme.AttributeSchemeName].BlindingPointValue,
-                                            request.Attributes[rootScheme.AttributeSchemeName].BlindingPointRoot,
-                                            issuer,
-                                            statePersistency.TransactionsService).ConfigureAwait(false);
-                _dataAccessService.UpdateIdentityAttributeCommitment(identity.Attributes.FirstOrDefault(a => a.AttributeName == rootScheme.AttributeName).AttributeId, originatingCommitment);
-
-                byte[] rootAssetId = _assetsService.GenerateAssetId(rootScheme.IdentitiesSchemeId, request.Attributes[rootScheme.AttributeSchemeName].Value);
-                await IssueAssociatedAttributes(
-                                    request.Attributes
-                                        .Where(e => e.Key != AttributesSchemes.ATTR_SCHEME_NAME_PASSWORD && (rootScheme == null || e.Key != rootScheme.AttributeSchemeName))
-                                        .Select(kv => (
-                                            identity.Attributes.FirstOrDefault(a => a.AttributeName == identitiesSchemes.FirstOrDefault(s => s.AttributeSchemeName == kv.Key).AttributeName).AttributeId,
-                                            kv.Key, kv.Value.Value, kv.Value.BlindingPointValue, kv.Value.BlindingPointRoot)).ToArray(),
+                byte[] rootAssetId = _assetsService.GenerateAssetId(rootScheme.IdentitiesSchemeId, rootAttributeDetails.Value.Value);
+                issuanceDetails.AssociatedAttributes = await IssueAssociatedAttributes(
+                                    attributeIssuanceDetails
+                                        .ToDictionary(d => identity.Attributes.First(a => a.AttributeName == d.Definition.AttributeName).AttributeId, d => d),
                                     statePersistency.TransactionsService,
                                     issuer, rootAssetId).ConfigureAwait(false);
+
+                return issuanceDetails;
             }
 
-            static void ValidateNotSupportedAttributes(IssueAttributesRequestDTO request, IEnumerable<AttributeDefinition> attributeDefinitions)
+            static IEnumerable<AttributeIssuanceDetails> GetValidatedIssuanceDetails(IssueAttributesRequestDTO request, IEnumerable<AttributeDefinition> attributeDefinitions)
             {
                 IEnumerable<string> notSupportedSchemeNames = request.Attributes.Keys.Where(k => attributeDefinitions.All(a => a.SchemeName != k));
 
@@ -521,6 +550,35 @@ namespace O10.Web.Server.Controllers
                 {
                     throw new Exception($"Following scheme names are not supported: {string.Join(',', notSupportedSchemeNames)}");
                 }
+
+                IEnumerable<AttributeIssuanceDetails> attributeIssuanceDetails = request.Attributes.Select(kv =>
+                    new AttributeIssuanceDetails
+                    {
+                        Definition = attributeDefinitions.FirstOrDefault(a => a.SchemeName == kv.Key),
+                        Value = kv.Value
+                    });
+
+                if (!attributeIssuanceDetails.Any(a => a.Definition.IsRoot))
+                {
+                    throw new MandatoryAttributeValueMissingException(attributeDefinitions.FirstOrDefault(a => a.IsRoot).AttributeName);
+                }
+
+                return attributeIssuanceDetails;
+            }
+
+            Identity CreateIdentityInDb(AccountDescriptor account, IEnumerable<AttributeIssuanceDetails> issuanceInputDetails)
+            {
+                var rootAttributeDetails = issuanceInputDetails.First(a => a.Definition.IsRoot);
+                Identity identity = _dataAccessService.GetIdentityByAttribute(account.AccountId, rootAttributeDetails.Definition.AttributeName, rootAttributeDetails.Value.Value);
+                if (identity == null)
+                {
+                    _dataAccessService.CreateIdentity(account.AccountId,
+                                       rootAttributeDetails.Value.Value,
+                                       issuanceInputDetails.Select(d => (d.Definition.AttributeName, d.Value.Value)).ToArray());
+                    identity = _dataAccessService.GetIdentityByAttribute(account.AccountId, rootAttributeDetails.Definition.AttributeName, rootAttributeDetails.Value.Value);
+                }
+
+                return identity;
             }
 
             #endregion  Internal Functions
@@ -588,17 +646,24 @@ namespace O10.Web.Server.Controllers
             return rootAttributeIssued;
         }
 
-        private async Task IssueAssociatedAttributes((long attributeId, string schemeName, string content, byte[] blindingPointValue, byte[] blindingPointRoot)[] attributes, IStateTransactionsService transactionsService, string issuer, byte[] rootAssetId = null)
+        private async Task<IEnumerable<IssuanceDetailsDto.IssuanceDetailsAssociated>> IssueAssociatedAttributes(Dictionary<long, AttributeIssuanceDetails> attributes, IStateTransactionsService transactionsService, string issuer, byte[] rootAssetId = null)
         {
-            (string rootSchemeName, _) = await _assetsService.GetRootAttributeSchemeName(issuer).ConfigureAwait(false);
-            long rootSchemeId = await _assetsService.GetSchemeId(rootSchemeName, issuer).ConfigureAwait(false);
+            List<IssuanceDetailsDto.IssuanceDetailsAssociated> issuanceDetails = new List<IssuanceDetailsDto.IssuanceDetailsAssociated>();
 
-            if (attributes.Any(a => a.schemeName == rootSchemeName))
+            (string rootSchemeName, _) = await _assetsService.GetRootAttributeSchemeName(issuer).ConfigureAwait(false);
+
+            if (attributes.Any(kv => kv.Value.Definition.IsRoot))
             {
-                var (attributeId, schemeName, content, blindingPointValue, blindingPointRoot) = attributes.FirstOrDefault(a => a.schemeName == rootSchemeName);
-                byte[] originatingCommitment = await IssueAssociatedAttribute(schemeName, content, blindingPointValue, blindingPointRoot, issuer, transactionsService).ConfigureAwait(false);
-                _dataAccessService.UpdateIdentityAttributeCommitment(attributeId, originatingCommitment);
-                rootAssetId = _assetsService.GenerateAssetId(rootSchemeId, content);
+                var rootKv = attributes.FirstOrDefault(kv => kv.Value.Definition.IsRoot);
+                var packet = await IssueAssociatedAttribute(rootKv.Value.Definition.SchemeName, rootKv.Value.Value.Value, rootKv.Value.Value.BlindingPointValue, rootKv.Value.Value.BlindingPointRoot, issuer, transactionsService).ConfigureAwait(false);
+                _dataAccessService.UpdateIdentityAttributeCommitment(rootKv.Key, packet.AssetCommitment);
+                issuanceDetails.Add(new IssuanceDetailsDto.IssuanceDetailsAssociated
+                {
+                    AttributeName = rootKv.Value.Definition.AttributeName,
+                    AssetCommitment = packet.AssetCommitment.ToHexString(),
+                    BindingToRootCommitment = packet.RootAssetCommitment.ToHexString()
+                });
+                rootAssetId = _assetsService.GenerateAssetId(rootKv.Value.Definition.SchemeId, rootKv.Value.Value.Value);
             }
 
             if (rootAssetId == null)
@@ -606,20 +671,25 @@ namespace O10.Web.Server.Controllers
                 throw new ArgumentException("Either rootAssetId must be provided outside or one of attributes must be root one");
             }
 
-            foreach ((long attributeId, string schemeName, string content, byte[] blindingPointValue, byte[] blindingPointRoot) in attributes.Where(a => a.schemeName != rootSchemeName))
+            foreach (var kv in attributes.Where(a => !a.Value.Definition.IsRoot))
             {
-                byte[] rootCommitment = _assetsService.GetCommitmentBlindedByPoint(rootAssetId, blindingPointRoot);
-                string issuanceContent = AttributesSchemes.ATTR_SCHEME_NAME_PASSWORD.Equals(schemeName) ? rootAssetId.ToHexString() : content;
+                byte[] rootCommitment = _assetsService.GetCommitmentBlindedByPoint(rootAssetId, kv.Value.Value.BlindingPointRoot);
+                string issuanceContent = AttributesSchemes.ATTR_SCHEME_NAME_PASSWORD.Equals(kv.Value.Definition.SchemeName) ? rootAssetId.ToHexString() : kv.Value.Value.Value;
 
-                byte[] originatingCommitment = await IssueAssociatedAttribute(schemeName, issuanceContent, blindingPointValue, rootCommitment, issuer, transactionsService).ConfigureAwait(false);
-                if (attributeId > 0)
+                var packet = await IssueAssociatedAttribute(kv.Value.Definition.SchemeName, issuanceContent, kv.Value.Value.BlindingPointValue, rootCommitment, issuer, transactionsService).ConfigureAwait(false);
+                issuanceDetails.Add(new IssuanceDetailsDto.IssuanceDetailsAssociated
                 {
-                    _dataAccessService.UpdateIdentityAttributeCommitment(attributeId, originatingCommitment);
-                }
+                    AttributeName = kv.Value.Definition.AttributeName,
+                    AssetCommitment = packet.AssetCommitment.ToHexString(),
+                    BindingToRootCommitment = packet.RootAssetCommitment.ToHexString()
+                });
+                _dataAccessService.UpdateIdentityAttributeCommitment(kv.Key, packet.AssetCommitment);
             }
+
+            return issuanceDetails;
         }
 
-        private async Task<byte[]> IssueAssociatedAttribute(string schemeName,
+        private async Task<IssueAssociatedBlindedAsset> IssueAssociatedAttribute(string schemeName,
                                                       string content,
                                                       byte[] blindingPointValue,
                                                       byte[] blindingPointRoot,
@@ -642,9 +712,7 @@ namespace O10.Web.Server.Controllers
                 };
             }
 
-            transactionsService.IssueAssociatedAsset(assetId, groupId, blindingPointValue, blindingPointRoot, out byte[] originatingCommitment);
-
-            return originatingCommitment;
+            return transactionsService.IssueAssociatedAsset(assetId, groupId, blindingPointValue, blindingPointRoot, out byte[] originatingCommitment);
         }
 
         private async Task<bool> VerifyFaceImage(string imageContent, string idContent, string publicKey)
@@ -681,6 +749,12 @@ namespace O10.Web.Server.Controllers
         private TransferAssetToUtxo TransferAssetToUtxo(IStateTransactionsService transactionsService, ConfidentialAccount account, byte[] rootAssetId)
         {
             return transactionsService.TransferAssetToUtxo(rootAssetId, account);
+        }
+
+        internal class AttributeIssuanceDetails
+        {
+            public AttributeDefinition Definition { get; set; }
+            public IssueAttributesRequestDTO.AttributeValue Value { get; set; }
         }
     }
 }
