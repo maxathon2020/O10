@@ -113,6 +113,8 @@ namespace O10.Web.Server.Controllers
                         SchemeName = rootAttribute.SchemeName
                     };
 
+                    userAttributeSchemes.Add(userAttributeScheme);
+
                     if (string.IsNullOrEmpty(userAttributeScheme.IssuerName))
                     {
                         await _schemeResolverService.ResolveIssuer(issuer)
@@ -774,6 +776,15 @@ namespace O10.Web.Server.Controllers
                 .PostJsonAsync(request)
                 .ReceiveJson<IEnumerable<AttributeValue>>()
                 .ConfigureAwait(false);
+
+            var attributeValue = attributeValues.FirstOrDefault(v => v.Definition.IsRoot);
+
+            if(attributeValue != null)
+            {
+                _dataAccessService.AddNonConfirmedRootAttribute(accountId, attributeValue.Value, issuer, attributeValue.Definition.AttributeName, rootAssetId);
+            }
+
+            _dataAccessService.UpdateUserAssociatedAttributes(accountId, issuer, attributeValues.Where(a => !a.Definition.IsRoot).Select(a => new Tuple<string, string>(a.Definition.AttributeName, a.Value)));
 
             return Ok(attributeValues);
 

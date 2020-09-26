@@ -4,6 +4,11 @@ namespace O10.Web.Server.Dtos.User
 {
     public class UserAttributeSchemeDto
     {
+        public UserAttributeSchemeDto()
+        {
+            RootAttributes = new List<UserAttributeDto>();
+        }
+
         public AttributeState State { get; set; }
         public string Issuer { get; set; }
         public string IssuerName { get; set; }

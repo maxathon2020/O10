@@ -137,18 +137,23 @@ namespace O10.Web.Server.Controllers
         [AllowAnonymous]
         public ActionResult<AttributeDefinition[]> SetAttributeDefinitions(string issuer, [FromBody] AttributeDefinition[] attributeDefinitions)
         {
-            IEnumerable<IdentitiesScheme> identitiesSchemes = _dataAccessService.GetAttributesSchemeByIssuer(issuer);
-
-            if (identitiesSchemes.Any(i => !attributeDefinitions.Any(a => a.SchemeName == i.AttributeSchemeName)))
-            {
-                return BadRequest();
-            }
+            IEnumerable<IdentitiesScheme> identitiesSchemes = _dataAccessService.GetAttributesSchemeByIssuer(issuer).Where(a => a.AttributeSchemeName != AttributesSchemes.ATTR_SCHEME_NAME_PASSWORD);
 
             List<AttributeDefinition> newAttributeDefinitions = attributeDefinitions.Where(a => !identitiesSchemes.Any(i => i.AttributeSchemeName == a.SchemeName)).ToList();
 
             newAttributeDefinitions.ForEach(a =>
             {
                 a.SchemeId = _dataAccessService.AddAttributeToScheme(issuer, a.AttributeName, a.SchemeName, a.Alias, a.Description);
+            });
+
+            identitiesSchemes.Where(i => i.IsActive && attributeDefinitions.All(a => a.AttributeName != i.AttributeName)).ToList().ForEach(a =>
+            {
+                _dataAccessService.DeactivateAttribute(a.IdentitiesSchemeId);
+            });
+
+            identitiesSchemes.Where(i => !i.IsActive && attributeDefinitions.Any(a => a.AttributeName == i.AttributeName)).ToList().ForEach(a =>
+            {
+                _dataAccessService.ActivateAttribute(a.IdentitiesSchemeId);
             });
 
             AttributeDefinition rootAttributeDefinition = attributeDefinitions.FirstOrDefault(a => a.IsRoot);
