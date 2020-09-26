@@ -630,7 +630,12 @@ class App extends Component<MyProps, MyState>{
             <Switch>
               <Route path="/nft">
                 {this.addressesNFTKYC()}
-                <NFT Wallets={this.state.data.Wallets}/>
+                <NFT 
+                  Wallets={this.state.data.Wallets} 
+                  fromIdentity={false}
+                  identityPayload={[]}
+                  identityCallback={()=>{}}
+                />
               </Route>
               <Route path="/kyc">
                 {this.addressesNFTKYC()}
@@ -652,7 +657,9 @@ class App extends Component<MyProps, MyState>{
                 <Identity/>
               </Route>
               <Route path="/identity2">
-                <Identity2/>
+                <Identity2
+                  Wallets={this.state.data.Wallets}
+                />
               </Route>
             </Switch>
           </div>

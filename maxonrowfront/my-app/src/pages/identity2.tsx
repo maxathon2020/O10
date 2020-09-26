@@ -2,6 +2,9 @@ import React, {Component} from 'react';
 import '../css/main.css';
 import axios from 'axios';
 import { timeStamp } from 'console';
+import { queryAllByAttribute } from '@testing-library/react';
+import NFT from './NFT';
+import ProviderOrSignerRequest from '../shared/initialize';
 
 class DataClass{
   private _loginRegisterErrorMessage = "";
@@ -10,14 +13,88 @@ class DataClass{
     this._loginRegisterErrorMessage = value;
   }
 
+  private _identityPayload: {[key: string]: any}[] = [];
+
+  private _fromIdentity: boolean = false;
+
+  private _errorMessageSelect: string = "";
+
   public get loginRegisterErrorMessage(): string{
     return this._loginRegisterErrorMessage;
   }
   private _username: string = "";
   private _password: string = "";
+  private _attributeModalOpen: boolean = false;
+  private _optionSelected: {[key: string]:any} = [
+    {
+      name: 'default', 
+      allowMultiple: false
+    }
+  ];
+  private _attributesSelected: {[key: string]:any}[] = []
+
+  private _isRoot: boolean = false;
+
+  public set errorMessageSelect(value: string){
+    this._errorMessageSelect = value;
+  }
+
+  public get errorMessageSelect(): string{
+    return this._errorMessageSelect;
+  }
+
+  public set isRoot(value:boolean){
+    this._isRoot = value;
+  }
+
+  public get isRoot(): boolean{
+    return this._isRoot;
+  }
+
+  public set optionSelected(value: {[key: string]: any}){
+    this._optionSelected = value;
+  } 
+
+  public get optionSelected(): {[key: string]: any} {
+    return this._optionSelected;
+  }
+
+  public set attributesSelected(value: {[key: string]:any}[]){
+    this._attributesSelected = value;
+  }
+
+  public get attributesSelected(): {[key: string]:any}[] {
+    return this._attributesSelected;
+  }
+
+  public set identityPayload(value: {[key: string]:any}[]){
+    this._identityPayload = value;
+  }
+
+  public get identityPayload(): {[key: string]:any}[] {
+    return this._identityPayload;
+  }
+
+  private _attributes: {[key: string]:any}[] = []
+
+  public set attributes(value: {[key: string]:any}[]){
+    this._attributes = value;
+  }
+
+  public get attributes(): {[key: string]:any}[] {
+    return this._attributes;
+  }
 
   public set username(value: string){
     this._username = value;
+  }
+
+  public get attributeModalOpen(): boolean {
+    return this._attributeModalOpen;
+  }
+
+  public set attributeModalOpen(value: boolean){
+    this._attributeModalOpen = value;
   }
 
   public get username(): string{
@@ -52,15 +129,39 @@ class DataClass{
     return this._publicViewKey;
   }
 
+  private _publicSpendKey: string;
+
+  public set publicSpendKey(value: string){
+    this._publicSpendKey = value;
+  }
+
+  public get publicSpendKey(): string{
+    return this._publicSpendKey;
+  }
+
+  public set fromIdentity(value: boolean) {
+    this._fromIdentity = value;
+  }
+  public get fromIdentity(): boolean {
+      return this._fromIdentity;
+  }
 
 }
 
 interface MyProps {
-
+  Wallets: ProviderOrSignerRequest, 
 };
 interface MyState {
   data: DataClass;
 };
+
+
+interface SchemeItems{
+  name: string,
+	description: string,
+	valueType: string,
+	allowMultiple: string
+}
 
 interface UserAccounts{
   accountId: number, 
@@ -81,6 +182,14 @@ interface SchemeResolution{
   isRoot: boolean
 }
 
+// Attribute Scheme Item Name - this is, in fact, the role that this particular attribute will play (i.e. - FirstName, ExpirationDate, IDCardNumber, etc)
+// Attribute name - what is the internal identifier for this attribute in the scope of a particular authority
+// Alias - how this attribute is called in the scope of a particular authority
+// Description
+// IsRoot - defines whether this attribute is the root or associated one in the scope of the particular authority. Every authority must have one root attribute regardless of authority issues Root Identity or Associated Identity.
+
+// function typeConverstionFromAny(<>){}
+
 class Identity2 extends Component<MyProps, MyState>{
 
   constructor(props: MyProps){
@@ -89,6 +198,41 @@ class Identity2 extends Component<MyProps, MyState>{
       data: new DataClass()
     }
   }
+
+  componentWillMount(){
+    let data = this.state.data;
+    // http://localhost:5003/api/SchemeResolution/SchemeItems
+    axios.get<SchemeItems[]>("http://localhost:5003/api/SchemeResolution/SchemeItems")
+    .then((resolve)=>{
+      data.attributes = resolve.data;
+      this.setState({data}, ()=>{
+        console.log("after setting data is: ", data);
+      });
+    })
+    .catch(error=>{
+      console.log("value of error: ", error);
+    })
+  }
+
+  componentDidMount(){
+    console.log("value of Wallets on ComponentDidMount: ", this.props.Wallets);
+  }
+
+  // http://localhost:5003/api/SchemeResolution/SchemeItems
+
+  // modalSelection = () => {
+
+  // }
+
+  // toggleModalSelection = async() => { 
+  //   let data = this.state.data;
+  //   data.attributeModalOpen = !data.attributeModalOpen;
+  //   await this.setState({data});
+  //   if(data.attributeModalOpen){
+  //     data.addMultipleErrorMessage = "";
+  //     await this.setState({data});
+  //   }
+  // }
 
   loginAccount = async() => {
     let data = this.state.data;
@@ -117,6 +261,7 @@ class Identity2 extends Component<MyProps, MyState>{
               if(usernameMatches && passwordMatches){
                 data.loggedIn = true;
                 data.publicViewKey = account.publicViewKey;
+                data.publicSpendKey = account.publicSpendKey;
                 data.loginRegisterErrorMessage="user successfully logged in";
                 this.setState({data});  
               }else{
@@ -141,6 +286,29 @@ class Identity2 extends Component<MyProps, MyState>{
 
   userNamePassword = () => {
     let data = this.state.data;
+
+    const registerAccountButton=()=>{
+      if(this.state.data.loggedIn == false){
+        return(        
+          <div
+            className="button"
+            style={{
+              marginLeft: '20%', 
+              marginRight: '20%', 
+              width: '60%', 
+              marginTop: '20px'
+            }}
+            onClick={()=>{
+              this.registerAccount();
+            }}
+          >
+            Register Account
+          </div>  
+        )
+      }else{
+        return <div/>
+      }
+    }
     const loginLogOutButton = () => {
       if(this.state.data.loggedIn==false){
         return(
@@ -176,6 +344,7 @@ class Identity2 extends Component<MyProps, MyState>{
               data.username = "";
               data.password = "";
               data.publicViewKey = "";
+              data.attributesSelected = [];
               this.setState({data});
             }}
           >
@@ -241,24 +410,12 @@ class Identity2 extends Component<MyProps, MyState>{
         >
           {data.loginRegisterErrorMessage}
         </div>
-        <div
-            className="button"
-            style={{
-              marginLeft: '20%', 
-              marginRight: '20%', 
-              width: '60%', 
-              marginTop: '20px'
-            }}
-            onClick={()=>{
-              this.registerAccount();
-            }}
-          >
-            Register Account
-          </div>
-          {loginLogOutButton()}
+        {registerAccountButton()}
+        {loginLogOutButton()}
       </>
     );
   }
+  
 
   registerAccount = async() => {
     //http://localhost:5003/api/accounts
@@ -280,7 +437,7 @@ class Identity2 extends Component<MyProps, MyState>{
         })
         if(!usernameExists){
           axios.post<UserAccounts>("http://localhost:5003/api/accounts/register", {
-            accountType: 3, //user
+            accountType: 1, //identity
             accountInfo: this.state.data.username, 
             password: this.state.data.password
           })
@@ -311,13 +468,15 @@ class Identity2 extends Component<MyProps, MyState>{
                   isRoot: false
                 } 
               ];
-              let publicViewKey = resolve.data.publicViewKey
+              let publicViewKey = resolve.data.publicViewKey;
+              let publicSpendKey = resolve.data.publicSpendKey;
               axios.put("http://localhost:5003/api/SchemeResolution/AttributeDefinitions?issuer="+publicViewKey, username_password_data)
               .then(resolve=>{
                 console.log('value of resolve of register /api/SchemeResolution/AttributeDefinitions?issuer=:', resolve);
                 data.publicViewKey = publicViewKey;
+                data.publicSpendKey = publicSpendKey; 
                 this.setState({data}, ()=>{
-                  console.log("after setting publicViewKey and value is: ", data.publicViewKey);
+                  console.log("after setting publicSpendKey and value is: ", data.publicSpendKey);
                 });
               })
               .catch(error=>{
@@ -342,6 +501,343 @@ class Identity2 extends Component<MyProps, MyState>{
     }
   }
 
+  createPackage = () => {
+    let data = this.state.data;
+    console.log("value of optionSelected: ", data.optionSelected);
+    console.log("value of attributes: ", data.attributes);
+    let optionList = data.attributes.map((attribute,key)=>{
+      return(
+        <option
+          key={key}
+          value={attribute.name}
+        >
+          {attribute.description}
+        </option>
+      );
+    })
+    if(data.loggedIn){
+      return(
+        <>
+          <div
+            style={{
+              display: 'flex', 
+              flexDirection: 'row', 
+              marginLeft: '2.5%', 
+              marginRight: '2.5%', 
+              width: '95%', 
+              alignItems: 'center', 
+              alignContent: 'center'
+            }}
+          >
+            <div
+              style={{
+                flex: 1
+              }}
+            >
+              <select
+                className="input"
+                style={{
+                  marginTop: '0px', 
+                  background: 'white'
+                }}
+                value={data.optionSelected.name} 
+                onChange={(e)=>{
+                  data.errorMessageSelect="";
+                  data.attributes.forEach(attribute=>{
+                    if(attribute.name == e.target.value){
+                      data.optionSelected = attribute;
+                    }
+                  })
+                  this.setState({data})            
+                }}
+              >
+                <option selected={true}>
+                  Select an attribute from the list to add.
+                </option>
+                {optionList}
+              </select>
+            </div>
+            <div
+              style={{
+                flex: 1, 
+                // background: 'green'
+              }}
+            >
+              <div
+                style={{
+                  display:'inline-block'
+                }}
+              >
+                Root?
+              </div>
+              <div
+                style={{
+                  display: 'inline-block'
+                }}
+              >
+                <input className="input"
+                  style={{
+                    cursor: 'pointer'
+                  }}
+                  type="checkbox"
+                  checked={this.state.data.isRoot}
+                  onChange={(e)=>{
+                    let data = this.state.data;
+                    data.isRoot = !data.isRoot;
+                    this.setState({data});
+                  }}
+                />
+              </div>
+            </div>
+            <div
+              style={{
+                flex: 1
+              }}
+            >
+              {/* 
+                interface SchemeResolution{
+                  schemeId: number,
+                  attributeName: string,
+                  schemeName: string,
+                  alias: string, 
+                  description: string, 
+                  isActive: boolean, 
+                  isRoot: boolean
+                } 
+              */}
+              {/* interface SchemeItems{
+                name: string,
+                description: string,
+                valueType: string,
+                allowMultiple: string
+              } */}
+              <div
+                className='button'
+                onClick={()=>{
+                  let data = this.state.data;
+                  let attributeToAdd: {[key: string]:any};
+                  data.attributes.map(attribute=>{
+                    console.log("value of attribute.name: ", attribute.name);
+                    console.log("value of data.optionSelected.name: ", data.optionSelected.name);
+                    if(attribute.name==data.optionSelected.name){
+                      attributeToAdd = {
+                        attributeName: "",
+                        schemeName: attribute.name,
+                        alias: "", 
+                        description: "", 
+                        isRoot: data.isRoot
+                      };
+                    } 
+                  })
+                  if(data.optionSelected.allowMultiple){
+                    data.attributesSelected.push(attributeToAdd);
+                  }else{
+                    let foundInstance = false;
+                    data.attributesSelected.forEach(attribute=>{
+                      if(attribute.schemeName==data.optionSelected.name){
+                        foundInstance = true;
+                        data.errorMessageSelect = "cannot use multiple of this item"
+                      }
+                    })
+                    if(!foundInstance){
+                      data.attributesSelected.push(attributeToAdd);
+                    }
+                  }
+                  this.setState({data});
+                }}
+              > 
+                Add Element
+              </div>
+            </div>
+          </div>
+        </>
+      );
+    }else{
+      return(
+        <div>
+          <div
+            style={{
+              margin: '20px', 
+              color: 'white'
+            }}
+          >
+            Register or login to create a package from available attributes.
+          </div> 
+        </div>
+      );
+    }
+  }
+
+  attributesSelectedList = () => {
+    let data = this.state.data;
+    let attributesList = data.attributesSelected.map((attribute, key)=>{
+      console.log("******************************************");
+      console.log("value of attribute: ", attribute);
+      console.log("******************************************");
+      return(
+        <div key={key}> 
+          <div>
+            {attribute.schemeName}
+          </div>
+          <div>
+            <div
+              style={{
+                display: 'inline-block', 
+                textDecoration: 'underline'
+              }}
+            >
+              Attribute Name: 
+            </div>
+            <input
+              className="input"
+              onChange={(e)=>{
+                let data = this.state.data;
+                data.attributesSelected[key]["attributeName"] = e.target.value;
+                this.setState({data}, ()=>{
+                  console.log("value of data after setting attributeName: ", data);
+                })
+              }}
+            >
+            </input>      
+          </div>
+          <div>
+            <div
+              style={{
+                display: 'inline-block', 
+                textDecoration: 'underline'
+              }}
+            >
+              Alias: 
+            </div>
+            <input
+              className="input"
+              onChange={(e)=>{
+                let data = this.state.data;
+                data.attributesSelected[key]["alias"] = e.target.value;
+                this.setState({data}, ()=>{
+                  console.log("value of data after setting attributeName: ", data);
+                })
+              }}
+            >
+            </input>      
+          </div>
+          <div>
+            <div
+              style={{
+                display: 'inline-block', 
+                textDecoration: 'underline'
+              }}
+            >
+              Description: 
+            </div>
+            <input
+              className="input"
+              onChange={(e)=>{
+                let data = this.state.data;
+                data.attributesSelected[key]["attributeName"] = e.target.value;
+                this.setState({data}, ()=>{
+                  console.log("value of data after setting attributeName: ", data);
+                })
+              }}
+            >
+            </input>      
+          </div>
+          <div>
+            <div
+              style={{
+                display: 'inline-block', 
+                textDecoration: 'underline'
+              }}
+            >
+              isRoot: <span style={{textDecoration: 'none'}}>{attribute.isRoot.toString()}</span>
+            </div>      
+          </div>
+        </div>
+      );
+    });
+    return(
+      <div
+        style={{
+          textAlign: 'center', 
+          marginTop: '5px'
+        }}
+      >
+        {attributesList}
+      </div>
+    );
+  }
+
+  storeAttributes = () => {
+    let data = this.state.data;
+    console.log("value of data.publicViewKey: ", data.publicViewKey);
+    console.log("value of data.publicSpendKey: ", data.publicSpendKey);
+    console.log("value of data.attributesSelected: ", data.attributesSelected);
+    axios.put<SchemeResolution[]>("http://localhost:5003/api/SchemeResolution/AttributeDefinitions?issuer="+data.publicSpendKey, data.attributesSelected)
+    .then(resolve=>{
+      console.log('value of resolve: ', resolve);
+      data.attributesSelected.forEach(attribute=>{
+        data.identityPayload.push({
+          name: attribute.attributeName+"@"+data.username, 
+          symbol: attribute.attributeName+"@"+data.username,
+          property: (data.isRoot?"root":"associated")+"@"+attribute.schemeName,
+          alias: attribute.alias
+        })
+      })
+      data.attributesSelected = [];
+      this.setState({data});
+    })
+    .catch(error=>{
+      console.log('value of error: ', error);
+    })
+  }
+
+  storeAttributesButton = () => {
+    if(this.state.data.attributesSelected.length>0){
+      return(
+        <div
+          className="button"
+          onClick={()=>{
+            this.storeAttributes();
+          }}
+        >
+          Store Attributes
+        </div>
+      )
+    }else{
+      return(<div/>)
+    }
+  }
+
+  // Name - {attribute name} @ {issuer name}
+  // Symbol - {attribute name} @ {issuer name}
+  // Property - root|associated @ {attribute scheme name}
+  // Metadata - {alias}
+
+  //open question - how do i know what wallet to use here? 
+
+  identityCallback = () => {
+    let data = this.state.data;
+    data.fromIdentity = true;
+    this.setState({data});
+  }
+
+  mintNFTAttributes = () => {
+    let data = this.state.data;
+    console.log("value of wallets: ", this.props.Wallets);
+    if(data.identityPayload.length>0){
+      return(
+        <NFT 
+          Wallets={this.props.Wallets}
+          identityPayload={data.identityPayload}
+          fromIdentity={true}
+          identityCallback={()=>{this.identityCallback()}}
+        />
+      )
+    }else{
+      return(<div/>)
+    }
+  }
+
   render(){
     return(
       <>
@@ -352,7 +848,53 @@ class Identity2 extends Component<MyProps, MyState>{
         </div>
         <div
           className="pages"
-        ></div>
+          style={{
+            color: 'white'
+          }}
+        > 
+          <div
+            style={{
+              margin: '20px', 
+              color: 'white'
+            }}
+          >
+            <p>
+              This is the account creation page. Select account values to add, with a root and several associated attributes. 
+            </p>
+          </div>
+          {this.createPackage()}
+          <div
+            style={{
+              color: 'red', 
+              textAlign: 'center', 
+              marginTop: "10px", 
+              marginBottom: "10px"
+            }}
+          > 
+            {this.state.data.errorMessageSelect}
+          </div>
+          <div
+            style={{
+              width: '80%', 
+              marginLeft: '10%',
+              background: this.state.data.attributesSelected.length>0?'green':"", 
+              maxHeight: '60vh', 
+              overflowY: 'auto'
+            }}
+          >
+            {this.attributesSelectedList()}
+          </div>   
+          <div
+            style={{
+              marginTop: '20px', 
+              float: 'right', 
+              marginRight: '5px'
+            }}
+          >
+            {this.storeAttributesButton()}
+          </div>     
+          {this.mintNFTAttributes()}
+        </div>
       </>
     )
   }
