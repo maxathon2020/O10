@@ -712,7 +712,7 @@ namespace O10.Web.Server.Controllers
         }
 
         [HttpPost("AttributesIssuance")]
-        public async Task<IActionResult> RequestForAttributesIssuance(long accountId, AttributesIssuanceRequestDto attributesIssuanceRequest)
+        public async Task<IActionResult> RequestForAttributesIssuance(long accountId, [FromBody] AttributesIssuanceRequestDto attributesIssuanceRequest)
         {
             var account = _accountsService.GetById(accountId);
             var persistency = _executionContextManager.ResolveUtxoExecutionServices(accountId);

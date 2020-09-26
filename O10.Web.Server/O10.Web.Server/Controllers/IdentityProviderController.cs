@@ -34,7 +34,6 @@ using System.Collections;
 
 namespace O10.Web.Server.Controllers
 {
-    [Authorize]
     [ApiController]
     [Route("api/[controller]")]
     public class IdentityProviderController : ControllerBase
@@ -67,7 +66,6 @@ namespace O10.Web.Server.Controllers
             _idenitiesHubContext = idenitiesHubContext;
             _logger = loggerService.GetLogger(nameof(IdentityProviderController));
         }
-
 
         [HttpGet("All")]
         public IActionResult GetAll(long scenarioId = 0)
