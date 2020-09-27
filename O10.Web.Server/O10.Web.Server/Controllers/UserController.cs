@@ -43,6 +43,10 @@ using O10.Web.Server.Services;
 using System.Diagnostics;
 using Microsoft.AspNetCore.Http;
 using O10.Web.Server.Configuration;
+using O10.Client.Common.Dtos.UniversalProofs;
+using O10.Client.Common.Communication;
+using O10.Core.Identity;
+using O10.Web.Server.Exceptions;
 
 namespace O10.Web.Server.Controllers
 {
@@ -58,6 +62,7 @@ namespace O10.Web.Server.Controllers
         private readonly IDataAccessService _dataAccessService;
         private readonly IGatewayService _gatewayService;
         private readonly ISchemeResolverService _schemeResolverService;
+        private readonly IIdentityKeyProvider _identityKeyProvider;
         private readonly IHubContext<IdentitiesHub> _idenitiesHubContext;
         private readonly IRestApiConfiguration _restApiConfiguration;
         private readonly IHashCalculation _hashCalculation;
@@ -72,6 +77,7 @@ namespace O10.Web.Server.Controllers
                               IDataAccessService externalDataAccessService,
                               IGatewayService gatewayService,
                               ISchemeResolverService schemeResolverService,
+                              IIdentityKeyProvider identityKeyProvider,
                               IConfigurationService configurationService,
                               IHubContext<IdentitiesHub> idenitiesHubContext,
                               ILoggerService loggerService,
@@ -85,6 +91,7 @@ namespace O10.Web.Server.Controllers
             _dataAccessService = externalDataAccessService;
             _gatewayService = gatewayService;
             _schemeResolverService = schemeResolverService;
+            _identityKeyProvider = identityKeyProvider;
             _idenitiesHubContext = idenitiesHubContext;
             _restApiConfiguration = configurationService.Get<IRestApiConfiguration>();
             _portalConfiguration = configurationService.Get<IPortalConfiguration>();
@@ -423,6 +430,160 @@ namespace O10.Web.Server.Controllers
             };
         }
 
+        [HttpPost("UniversalProofs")]
+        public async Task<IActionResult> SendUniversalProofs([FromQuery] long accountId, [FromBody] UniversalProofsSendingRequest request)
+        {
+            if (request is null)
+            {
+                throw new ArgumentNullException(nameof(request));
+            }
+
+            var persistency = _executionContextManager.ResolveUtxoExecutionServices(accountId);
+            var rootAttribute = _dataAccessService.GetUserRootAttribute(request.RootAttributeId);
+            byte[] commitment = ConfidentialAssetsHelper.GetNonblindedAssetCommitment(rootAttribute.AssetId);
+            byte[] bf = ConfidentialAssetsHelper.GetRandomSeed();
+            byte[] commitmentToRoot = ConfidentialAssetsHelper.BlindAssetCommitment(commitment, bf);
+            byte[] issuer = rootAttribute.Source.HexStringToByteArray();
+            Random random = new Random(BitConverter.ToInt32(bf, 0));
+            byte[][] issuanceCommitments = await _gatewayService.GetIssuanceCommitments(issuer, _restApiConfiguration.RingSize + 1).ConfigureAwait(false);
+            SurjectionProof eligibilityProof = UtxoTransactionsService.CreateEligibilityProof(rootAttribute.OriginalCommitment, rootAttribute.OriginalBlindingFactor, issuanceCommitments, bf, commitmentToRoot, random);
+
+            RequestInput requestInput = new RequestInput
+            {
+                AssetId = rootAttribute.AssetId,
+                Issuer = rootAttribute.Source.HexStringToByteArray(),
+                PrevAssetCommitment = rootAttribute.LastCommitment,
+                PrevBlindingFactor = rootAttribute.LastBlindingFactor,
+                PrevDestinationKey = rootAttribute.LastDestinationKey,
+                PrevTransactionKey = rootAttribute.LastTransactionKey,
+                PublicSpendKey = request.Target.HexStringToByteArray(),
+                AssetCommitment = commitmentToRoot,
+                BlindingFactor = bf
+            };
+
+            IKey issuerKey = _identityKeyProvider.GetKey(rootAttribute.Source.HexStringToByteArray());
+            SurjectionProof proofToRegistration = await persistency.RelationsBindingService.CreateProofToRegistration(requestInput.PublicSpendKey, bf, commitmentToRoot, requestInput.AssetId).ConfigureAwait(false);
+
+            // ================================================================================
+            // Prepare proof of Password
+            // ================================================================================
+            var associatedAttribute = await _assetsService.GetProtectionAttributeProofs(bf,
+                                                                              rootAttribute.AssetId,
+                                                                              persistency.BindingKeySource,
+                                                                              rootAttribute.Source).ConfigureAwait(false);
+            // ================================================================================
+
+            UniversalProofs universalProofs = new UniversalProofs
+            {
+                SessionKey = request.SessionKey,
+                Mission = UniversalProofsMission.Authentication,
+                Issuer = issuerKey,
+                IssuersAttributes = new List<AttributesByIssuer>
+                {
+                    new AttributesByIssuer()
+                    {
+                        Issuer = issuerKey,
+                        RootAttribute = new AttributeProofs
+                        {
+                            Commitment = _identityKeyProvider.GetKey(commitmentToRoot),
+                            BindingProof = eligibilityProof,
+                            CommitmentProof = new CommitmentProof
+                            {
+                                SurjectionProof = proofToRegistration
+                            }
+                        },
+                        Attributes = new List<AttributeProofs> { associatedAttribute }
+                    }
+                }
+            };
+
+            await SendUniversalTransport(accountId, persistency, requestInput, universalProofs, request.ServiceProviderInfo, true).ConfigureAwait(false);
+
+            return Ok();
+        }
+
+        private async Task SendUniversalTransport(long accountId, UtxoPersistencyEx persistency, RequestInput requestInput, UniversalProofs universalProofs, string serviceProviderInfo, bool storeRegistration = false)
+        {
+            OutputModel[] outputModels = await _gatewayService.GetOutputs(_restApiConfiguration.RingSize + 1).ConfigureAwait(false);
+            await persistency.TransactionsService.SendUniversalTransport(requestInput, outputModels, universalProofs)
+                .ContinueWith(t =>
+                {
+                    _dataAccessService.AddUserTransactionSecret(accountId,
+                                                                universalProofs.KeyImage.ToString(),
+                                                                universalProofs.Issuer.ToString(),
+                                                                requestInput.AssetId.ToHexString(),
+                                                                t.Result.NewBlindingFactor.ToHexString());
+                }, TaskScheduler.Current)
+                .ConfigureAwait(false);
+
+            string universalProofsStringify = JsonConvert.SerializeObject(universalProofs);
+
+            bool postSucceeded = false;
+            await _restApiConfiguration
+                .UniversalProofsPoolUri.PostJsonAsync(universalProofs)
+                .ContinueWith(t =>
+                {
+                    if (!t.IsCompletedSuccessfully)
+                    {
+                        string response = AsyncUtil.RunSync(async () => await ((FlurlHttpException)t.Exception.InnerException).Call.Response.Content.ReadAsStringAsync().ConfigureAwait(false));
+                        _logger.Error($"Failure during posting Universal Proofs", t.Exception.InnerException);
+                        throw new UniversalProofsSendingFailedException(t.Exception.InnerException.Message, t.Exception.InnerException);
+
+                    }
+                    else
+                    {
+                        postSucceeded = true;
+                    }
+                }, TaskScheduler.Current)
+                .ConfigureAwait(false);
+
+            if (postSucceeded && storeRegistration)
+            {
+                await StoreRegistration(accountId, persistency, requestInput.PublicSpendKey, serviceProviderInfo, requestInput.Issuer, requestInput.AssetId).ConfigureAwait(false);
+            }
+        }
+
+        private async Task<bool> StoreRegistration(long accountId, UtxoPersistencyEx persistency, byte[] target, string spInfo, Memory<byte> issuer, params Memory<byte>[] assetIds)
+        {
+            string issuerStr = issuer.ToHexString();
+            string assetIdStr = string.Join(',', assetIds.Select(a => a.ToString()));
+
+            _logger.LogIfDebug(() => $"Storing user registration at {spInfo}, assetId: {assetIdStr}, issuer: {issuerStr}");
+
+            (_, byte[] registrationCommitment) = await persistency.RelationsBindingService.GetBoundedCommitment(target, assetIds).ConfigureAwait(false);
+            long registrationId = _dataAccessService.AddUserRegistration(accountId, registrationCommitment.ToHexString(), spInfo, assetIdStr, issuerStr);
+            if (registrationId > 0)
+            {
+                _logger.LogIfDebug(() => $"New user registration {registrationCommitment.ToHexString()} added for {spInfo}, assetId: {assetIdStr}, issuer: {issuerStr}");
+                try
+                {
+                    bool res = await _schemeResolverService.StoreRegistrationCommitment(issuerStr, assetIdStr, registrationCommitment.ToHexString(), spInfo).ConfigureAwait(false);
+                    if (!res)
+                    {
+                        _logger.Error($"Failed to store user registration remotely, registration: {registrationCommitment.ToHexString()}, spInfo: {spInfo}, assetId: {assetIdStr}, issuer: {issuerStr}");
+                        _dataAccessService.RemoveUserRegistration(registrationId);
+                    }
+                    else
+                    {
+                        _logger.LogIfDebug(() => $"New user registration at {spInfo} stored successfully");
+                    }
+
+                    return res;
+                }
+                catch (Exception ex)
+                {
+                    _logger.Error("Failed to store Inherence Registration Commitment", ex);
+                }
+            }
+            else
+            {
+                _logger.LogIfDebug(() => $"User registration {registrationCommitment.ToHexString()} at {spInfo} already exists");
+            }
+
+            return true;
+        }
+
+
         [HttpPost("SendIdentityProofs")]
         public async Task<IActionResult> SendIdentityProofs(long accountId, [FromBody] UserAttributeTransferWithValidationsDto userAttributeTransfer)
         {
@@ -744,10 +905,10 @@ namespace O10.Web.Server.Controllers
 
             if (attributesIssuanceRequest.MasterRootAttributeId == null)
             {
-                // Need only in case when _rootAttribute is null, i.e. BlinkID is the Root Attribute
+                // Need only in case when _rootAttribute is null
                 // =======================================================================================================================
-                _assetsService.GetBlindingPoint(await persistency.BindingKeySource.Task.ConfigureAwait(false), rootAssetId, out byte[] blindingPoint, out byte[] blindingFactor);
                 byte[] protectionAssetId = await _assetsService.GenerateAssetId(AttributesSchemes.ATTR_SCHEME_NAME_PASSWORD, rootAssetId.ToHexString(), issuer).ConfigureAwait(false);
+                _assetsService.GetBlindingPoint(await persistency.BindingKeySource.Task.ConfigureAwait(false), rootAssetId, protectionAssetId, out byte[] blindingPoint, out byte[] blindingFactor);
                 byte[] protectionAssetNonBlindedCommitment = ConfidentialAssetsHelper.GetNonblindedAssetCommitment(protectionAssetId);
                 byte[] protectionAssetCommitment = ConfidentialAssetsHelper.SumCommitments(protectionAssetNonBlindedCommitment, blindingPoint);
                 byte[] sessionBlindingFactor = ConfidentialAssetsHelper.GetRandomSeed();

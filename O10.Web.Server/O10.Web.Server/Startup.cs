@@ -56,7 +56,7 @@ namespace O10.Web.Server
                        .AllowAnyHeader();
             }));
 
-            services.AddControllers();
+            services.AddControllers().AddNewtonsoftJson();
 
             services.AddSignalR();
             //services.TryAddTransient<IClaimsService, ClaimsService>();

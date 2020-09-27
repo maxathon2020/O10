@@ -294,7 +294,6 @@ namespace O10.Web.Server.Controllers
             }
         }
 
-        [AllowAnonymous]
         [HttpPost("UniversalProofs")]
         public IActionResult PostUniversalProofs([FromBody] UniversalProofs universalProofs)
         {

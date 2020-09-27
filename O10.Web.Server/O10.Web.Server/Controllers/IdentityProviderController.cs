@@ -648,8 +648,6 @@ namespace O10.Web.Server.Controllers
         {
             List<IssuanceDetailsDto.IssuanceDetailsAssociated> issuanceDetails = new List<IssuanceDetailsDto.IssuanceDetailsAssociated>();
 
-            (string rootSchemeName, _) = await _assetsService.GetRootAttributeSchemeName(issuer).ConfigureAwait(false);
-
             if (attributes.Any(kv => kv.Value.Definition.IsRoot))
             {
                 var rootKv = attributes.FirstOrDefault(kv => kv.Value.Definition.IsRoot);
@@ -672,9 +670,8 @@ namespace O10.Web.Server.Controllers
             foreach (var kv in attributes.Where(a => !a.Value.Definition.IsRoot))
             {
                 byte[] rootCommitment = _assetsService.GetCommitmentBlindedByPoint(rootAssetId, kv.Value.Value.BlindingPointRoot);
-                string issuanceContent = AttributesSchemes.ATTR_SCHEME_NAME_PASSWORD.Equals(kv.Value.Definition.SchemeName) ? rootAssetId.ToHexString() : kv.Value.Value.Value;
 
-                var packet = await IssueAssociatedAttribute(kv.Value.Definition.SchemeName, issuanceContent, kv.Value.Value.BlindingPointValue, rootCommitment, issuer, transactionsService).ConfigureAwait(false);
+                var packet = await IssueAssociatedAttribute(kv.Value.Definition.SchemeName, kv.Value.Value.Value, kv.Value.Value.BlindingPointValue, rootCommitment, issuer, transactionsService).ConfigureAwait(false);
                 issuanceDetails.Add(new IssuanceDetailsDto.IssuanceDetailsAssociated
                 {
                     AttributeName = kv.Value.Definition.AttributeName,
