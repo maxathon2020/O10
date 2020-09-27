@@ -49,12 +49,12 @@ namespace O10.Web.Server
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            //services.AddCors(o => o.AddPolicy("EnableAllCors", builder =>
-            //{
-            //    builder.AllowAnyOrigin()
-            //           .AllowAnyMethod()
-            //           .AllowAnyHeader();
-            //}));
+            services.AddCors(o => o.AddPolicy("EnableAllCors", builder =>
+            {
+                builder.AllowAnyOrigin()
+                       .AllowAnyMethod()
+                       .AllowAnyHeader();
+            }));
 
             services.AddControllers().AddNewtonsoftJson();
 
@@ -84,16 +84,9 @@ namespace O10.Web.Server
             //app.UseHttpsRedirection();
 
             app.UseRouting();
-            app.UseCors(builder => 
-            {
-                builder
-                .AllowAnyOrigin()
-                .AllowAnyHeader()
-                .AllowAnyMethod()
-                .AllowCredentials();
-            });
+            app.UseCors("EnableAllCors");
 
-            //app.UseAuthorization();
+            app.UseAuthorization();
 
             app.UseEndpoints(endpoints =>
             {
