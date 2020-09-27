@@ -1,4 +1,4 @@
-import signalR from '@microsoft/signalr';
+import * as signalR from '@microsoft/signalr';
 
 export default class SignalRClass{
 
@@ -31,9 +31,9 @@ export default class SignalRClass{
     this._accountId = value;
   }
 
-  private initalizeHub(){
+  public initializeHub(){
     this.hubConnection = new signalR.HubConnectionBuilder()
-    .withUrl("/chathub")
+    .withUrl("http://localhost:5003/identitiesHub")
     .configureLogging(signalR.LogLevel.Information)
     .build();
     const start = async() => {
@@ -54,7 +54,8 @@ export default class SignalRClass{
 		});
 		this.hubConnection.on("PushAttribute", (i) => {
 			this.spAttributes.push(i);
-		});
+    });
+    
 		// this.hubConnection.on("PushEmployeeUpdate", (i) => {
 		// 	for (let employee of this.employees) {
 		// 		if (employee.assetId === i.assetId) {

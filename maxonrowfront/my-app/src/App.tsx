@@ -9,6 +9,8 @@ import User3 from './pages/User3';
 import Service from './pages/Service';
 import Identity from './pages/Identity';
 import Identity2 from './pages/identity2';
+import SignalRClass from "../src/shared/signalR";
+
 
 // import {ProviderOrSignerRequest} from './shared/initialize';
 import {
@@ -192,6 +194,11 @@ class App extends Component<MyProps, MyState>{
     this.state = {
         data: new DataClass()
     }
+  }
+
+  componentDidMount(){
+    let signalR = new SignalRClass();
+    signalR.initializeHub();
   }
 
   initializeHandler = () => {

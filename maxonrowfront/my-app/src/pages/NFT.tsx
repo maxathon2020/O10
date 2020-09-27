@@ -103,7 +103,7 @@ interface MyProps {
     Wallets: ProviderOrSignerRequest, 
     fromIdentity: boolean, 
     identityPayload: {[key: string]: string}[];
-    identityCallback: ()=>void;
+    identityCallback: (arg0: TransactionReceipt)=>void;
 };
 interface MyState {
     data: DataClass
@@ -133,7 +133,7 @@ class NFT extends Component<MyProps, MyState>{
                     this.identityProviderFlow()
                 })
             })
-            this.props.identityCallback();
+            this.props.identityCallback(data.trxReceipt);
         }
     }
 

@@ -1,6 +1,7 @@
 import React, {Component} from 'react';
 import '../css/main.css';
 import axios from 'axios';
+import { TransactionReceipt } from 'mxw-sdk-js/dist/providers/abstract-provider';
 import { timeStamp } from 'console';
 import { queryAllByAttribute } from '@testing-library/react';
 import NFT from './NFT';
@@ -8,9 +9,17 @@ import ProviderOrSignerRequest from '../shared/initialize';
 
 class DataClass{
   private _loginRegisterErrorMessage = "";
-  
+  private _trxReceipt: TransactionReceipt = null;
+
   public set loginRegisterErrorMessage(value: string){
     this._loginRegisterErrorMessage = value;
+  }
+
+  public set trxReceipt(value: TransactionReceipt) {
+    this._trxReceipt = value;
+  }
+  public get trxReceipt(): TransactionReceipt {
+      return this._trxReceipt;
   }
 
   private _identityPayload: {[key: string]: any}[] = [];
@@ -344,6 +353,7 @@ class Identity2 extends Component<MyProps, MyState>{
               data.username = "";
               data.password = "";
               data.publicViewKey = "";
+              data.trxReceipt = null;
               data.attributesSelected = [];
               this.setState({data});
             }}
@@ -421,6 +431,7 @@ class Identity2 extends Component<MyProps, MyState>{
     //http://localhost:5003/api/accounts
     let data = this.state.data;
     data.loginRegisterErrorMessage = "";
+    data.trxReceipt = null;
     await this.setState({data});
     if(data.username==""||data.password==""){
       data.loginRegisterErrorMessage = "neither username nor password may be blank";
@@ -615,6 +626,7 @@ class Identity2 extends Component<MyProps, MyState>{
                 className='button'
                 onClick={()=>{
                   let data = this.state.data;
+                  data.trxReceipt = null;
                   let attributeToAdd: {[key: string]:any};
                   data.attributes.map(attribute=>{
                     console.log("value of attribute.name: ", attribute.name);
@@ -815,28 +827,41 @@ class Identity2 extends Component<MyProps, MyState>{
 
   //open question - how do i know what wallet to use here? 
 
-  identityCallback = () => {
+  identityCallback = (trxReceipt: TransactionReceipt) => {
     let data = this.state.data;
     data.fromIdentity = true;
+    data.trxReceipt = trxReceipt;
     this.setState({data});
   }
 
   mintNFTAttributes = () => {
     let data = this.state.data;
     console.log("value of wallets: ", this.props.Wallets);
+    console.log("value of data.identityPayload.length: ", data.identityPayload.length);
     if(data.identityPayload.length>0){
       return(
         <NFT 
           Wallets={this.props.Wallets}
           identityPayload={data.identityPayload}
           fromIdentity={true}
-          identityCallback={()=>{this.identityCallback()}}
+          identityCallback={(trxReceipt)=>{this.identityCallback(trxReceipt)}}
         />
       )
     }else{
       return(<div/>)
     }
   }
+
+  // showMintValues = () => {
+  //   let data = this.state.data;
+  //   if(data.identityPayload.length>0 && data.trxReceipt==null){
+  //     return(
+  //       <div>
+  //         Currently 
+  //       </div>
+  //     )
+  //   }
+  // }
 
   render(){
     return(
@@ -894,6 +919,7 @@ class Identity2 extends Component<MyProps, MyState>{
             {this.storeAttributesButton()}
           </div>     
           {this.mintNFTAttributes()}
+          {/* {this.showMintValues()} */}
         </div>
       </>
     )
