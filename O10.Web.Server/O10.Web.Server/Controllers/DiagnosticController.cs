@@ -1,5 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using O10.Client.Common.Interfaces;
+using O10.Client.Web.Common.Hubs;
 using O10.Core.Models;
 using System;
 using System.Collections.Generic;
@@ -10,14 +12,16 @@ using System.Threading.Tasks;
 namespace O10.Web.Server.Controllers
 {
     [ApiController]
-    [Route("[controller]")]
+    [Route("api/[controller]")]
     public class DiagnosticController : ControllerBase
     {
         private readonly IGatewayService _gatewayService;
+        private readonly IHubContext<IdentitiesHub> _idenitiesHubContext;
 
-        public DiagnosticController(IGatewayService gatewayService)
+        public DiagnosticController(IGatewayService gatewayService, IHubContext<IdentitiesHub> idenitiesHubContext)
         {
             _gatewayService = gatewayService;
+            _idenitiesHubContext = idenitiesHubContext;
         }
 
         [HttpGet]
@@ -36,6 +40,21 @@ namespace O10.Web.Server.Controllers
             }
 
             return Ok(portalInfo.Concat(gatewayInfo));
+        }
+
+        [HttpPost("SignalR")]
+        public IActionResult TestSignalR(long accountId = 0, string method = "Test", [FromBody] object arg = null)
+        {
+            if(accountId != 0)
+            {
+                _idenitiesHubContext.Clients.Group(accountId.ToString()).SendAsync(method, arg);
+            }
+            else
+            {
+                _idenitiesHubContext.Clients.All.SendAsync(method, arg);
+            }
+
+            return Ok();
         }
     }
 }

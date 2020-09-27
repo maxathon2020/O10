@@ -3,12 +3,14 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.30503.244
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "O10.Web.Server", "O10.Web.Server\O10.Web.Server.csproj", "{76D1CEB9-DE22-40E5-A603-A400129A2876}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "O10.Web.Server", "O10.Web.Server\O10.Web.Server.csproj", "{76D1CEB9-DE22-40E5-A603-A400129A2876}"
 EndProject
 Project("{E53339B2-1760-4266-BCC7-CA923CBCF16C}") = "docker-compose", "docker-compose.dcproj", "{37859FF2-572A-4725-A1DF-2B99EFF3C697}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".globals", ".globals", "{01F7D938-DD7A-41F7-95E7-74ABA6930F38}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{639D7ED0-CC4B-4881-BDB8-16B01C4AE38D}"
 	ProjectSection(SolutionItems) = preProject
+		..\docker-compose.yml = ..\docker-compose.yml
+		Dockerfile = Dockerfile
 		..\README.md = ..\README.md
 	EndProjectSection
 EndProject

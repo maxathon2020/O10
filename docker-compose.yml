@@ -1,0 +1,25 @@
+version: '3.4'
+
+services:
+  o10.web.server:
+    image: muaddibco/o10portal:maxathon
+    environment:
+      - ASPNETCORE_URLS=http://+:80
+      - GWSERVICENAME=o10.gateway.webapp
+    ports:
+      - 5003:80
+  o10.gateway.webapp:
+    image: muaddibco/o10gateway:maxathon
+    ports:
+    - 5002:80
+    environment:
+      - ASPNETCORE_URLS=http://+:80
+      - GWSERVICENAME=o10.gateway.webapp
+      - NODESERVICENAME=o10.node.webapp
+
+  o10.node.webapp:
+    image: muaddibco/o10node:maxathon
+    environment:
+      - ASPNETCORE_URLS=http://+:80
+    ports:
+    - 5001:80

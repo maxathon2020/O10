@@ -61,6 +61,15 @@ namespace O10.Web.Server.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Authentication failed for the account with accountId &apos;{0}&apos;.
+        /// </summary>
+        internal static string ERR_ACCOUNT_AUTHENTICATION_FAILED {
+            get {
+                return ResourceManager.GetString("ERR_ACCOUNT_AUTHENTICATION_FAILED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Account with id {0} not found.
         /// </summary>
         internal static string ERR_ACCOUNT_NOT_FOUND {
@@ -133,6 +142,15 @@ namespace O10.Web.Server.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Execution context not started yet for the account with accountId &apos;{0}&apos;.
+        /// </summary>
+        internal static string ERR_EXECUTIONCONTEXT_NOTSTARTED {
+            get {
+                return ResourceManager.GetString("ERR_EXECUTIONCONTEXT_NOTSTARTED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Failed to transfer Root Attribute.
         /// </summary>
         internal static string ERR_FAILED_TRANSFER_ROOT_ATTR {
@@ -156,6 +174,15 @@ namespace O10.Web.Server.Properties {
         internal static string ERR_INHERENCE_REGISTRATION_PROOFS_INCORRECT {
             get {
                 return ResourceManager.GetString("ERR_INHERENCE_REGISTRATION_PROOFS_INCORRECT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to A value for the mandatory attribute &apos;{0}&apos; was not provided.
+        /// </summary>
+        internal static string ERR_MANDATORY_ATTRIBUTE_NOT_PROVIDED {
+            get {
+                return ResourceManager.GetString("ERR_MANDATORY_ATTRIBUTE_NOT_PROVIDED", resourceCulture);
             }
         }
         
@@ -210,6 +237,15 @@ namespace O10.Web.Server.Properties {
         internal static string ERR_SP_AUTHENTICATION_FAILED {
             get {
                 return ResourceManager.GetString("ERR_SP_AUTHENTICATION_FAILED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Received account with accountId &apos;{0}&apos; with unexpected type &apos;{0}&apos;.
+        /// </summary>
+        internal static string ERR_UNEXPECTED_ACCOUNT_TYPE {
+            get {
+                return ResourceManager.GetString("ERR_UNEXPECTED_ACCOUNT_TYPE", resourceCulture);
             }
         }
         

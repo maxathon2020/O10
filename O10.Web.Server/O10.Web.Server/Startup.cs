@@ -4,14 +4,18 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.HttpsPolicy;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 using O10.Client.Web.Common.Hubs;
 using O10.Client.Web.Common.Services;
 using O10.Core.Configuration;
@@ -45,7 +49,14 @@ namespace O10.Web.Server
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddControllers();
+            services.AddCors(o => o.AddPolicy("EnableAllCors", builder =>
+            {
+                builder.AllowAnyOrigin()
+                       .AllowAnyMethod()
+                       .AllowAnyHeader();
+            }));
+
+            services.AddControllers().AddNewtonsoftJson();
 
             services.AddSignalR();
             //services.TryAddTransient<IClaimsService, ClaimsService>();
@@ -65,10 +76,15 @@ namespace O10.Web.Server
             {
                 app.UseDeveloperExceptionPage();
             }
+            else
+            {
+                app.UseExceptionHandler("/error");
+            }
 
             //app.UseHttpsRedirection();
 
             app.UseRouting();
+            app.UseCors("EnableAllCors");
 
             app.UseAuthorization();
 
