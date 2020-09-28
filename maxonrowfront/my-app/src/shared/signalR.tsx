@@ -40,6 +40,17 @@ export default class SignalRClass{
       try {
         await this.hubConnection.start();
         console.log("SignalR Connected.");
+        this.hubConnection.invoke("AddToGroup", "2")
+          .then(
+            v => {
+              console.log("AddToGroup succeeded");
+              console.log(v);
+            },
+            e => {
+              console.log("AddToGroup failed");
+              console.log(e);
+            }
+        );
       } catch (err) {
         console.log(err);
         setTimeout(start, 5000);
@@ -50,6 +61,7 @@ export default class SignalRClass{
     start();
 
     this.hubConnection.on("PushRegistration", (i) => {
+      console.log(i);
 			this.registrations.push(i);
 		});
 		this.hubConnection.on("PushAttribute", (i) => {
