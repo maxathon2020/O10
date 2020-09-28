@@ -142,7 +142,29 @@ namespace O10.Web.Server.Controllers
                 }
             }
 
+            foreach (var attributeScheme in userAttributeSchemes)
+            {
+                SetIdentitySchemeState(attributeScheme);
+            }
+
             return userAttributeSchemes;
+        }
+
+        private static void SetIdentitySchemeState(UserAttributeSchemeDto attributeScheme)
+        {
+            attributeScheme.State = AttributeState.NotConfirmed;
+
+            foreach (var rootAttribute in attributeScheme.RootAttributes)
+            {
+                if (rootAttribute.State == AttributeState.Confirmed)
+                {
+                    attributeScheme.State = AttributeState.Confirmed;
+                }
+                else if (rootAttribute.State == AttributeState.Disabled && attributeScheme.State != AttributeState.Confirmed)
+                {
+                    attributeScheme.State = AttributeState.Disabled;
+                }
+            }
         }
 
         [HttpDelete("UserRootAttribute")]
@@ -162,7 +184,8 @@ namespace O10.Web.Server.Controllers
                 Validated = !string.IsNullOrEmpty(c.Content),
                 Source = c.Source,
                 IssuerName = issuerName,
-                IsOverriden = c.IsOverriden
+                IsOverriden = c.IsOverriden,
+                State = c.IsOverriden ? AttributeState.Disabled : (c.LastCommitment.ToHexString() == "0000000000000000000000000000000000000000000000000000000000000000" ? AttributeState.NotConfirmed : AttributeState.Confirmed)
             };
         }
 

@@ -127,34 +127,31 @@ namespace O10.Web.Server.Controllers
 
             return Ok(spIdenitityValidations.Select(s =>
             {
-                switch (s.SchemeName)
+                return s.SchemeName switch
                 {
-                    case AttributesSchemes.ATTR_SCHEME_NAME_PLACEOFBIRTH:
-                        return new IdentityAttributeValidationDefinitionDto
-                        {
-                            CriterionValue = s.GroupIdCriterion?.ToHexString(),
-                            SchemeName = s.SchemeName,
-                            ValidationType = ((ushort)s.ValidationType).ToString(CultureInfo.InvariantCulture)
-                        };
-                    case AttributesSchemes.ATTR_SCHEME_NAME_DATEOFBIRTH:
-                        return new IdentityAttributeValidationDefinitionDto
-                        {
-                            CriterionValue = s.NumericCriterion.Value.ToString(CultureInfo.InvariantCulture),
-                            SchemeName = s.SchemeName,
-                            ValidationType = ((ushort)s.ValidationType).ToString(CultureInfo.InvariantCulture)
-                        };
-                    default:
-                        return new IdentityAttributeValidationDefinitionDto
-                        {
-                            SchemeName = s.SchemeName,
-                            ValidationType = ((ushort)s.ValidationType).ToString(CultureInfo.InvariantCulture)
-                        };
-                }
+                    AttributesSchemes.ATTR_SCHEME_NAME_PLACEOFBIRTH => new IdentityAttributeValidationDefinitionDto
+                    {
+                        CriterionValue = s.GroupIdCriterion?.ToHexString(),
+                        SchemeName = s.SchemeName,
+                        ValidationType = ((ushort)s.ValidationType).ToString(CultureInfo.InvariantCulture)
+                    },
+                    AttributesSchemes.ATTR_SCHEME_NAME_DATEOFBIRTH => new IdentityAttributeValidationDefinitionDto
+                    {
+                        CriterionValue = s.NumericCriterion.Value.ToString(CultureInfo.InvariantCulture),
+                        SchemeName = s.SchemeName,
+                        ValidationType = ((ushort)s.ValidationType).ToString(CultureInfo.InvariantCulture)
+                    },
+                    _ => new IdentityAttributeValidationDefinitionDto
+                    {
+                        SchemeName = s.SchemeName,
+                        ValidationType = ((ushort)s.ValidationType).ToString(CultureInfo.InvariantCulture)
+                    },
+                };
             }));
         }
 
-        [HttpPost("IdentityAttributeValidationDefinitions")]
-        public IActionResult UpdateIdentityAttributeValidationDefinitions(long accountId, [FromBody] IdentityAttributeValidationDefinitionsDto identityAttributeValidationDefinitions)
+        [HttpPut("IdentityAttributeValidationDefinitions")]
+        public IActionResult SetIdentityAttributeValidationDefinitions(long accountId, [FromBody] IdentityAttributeValidationDefinitionsDto identityAttributeValidationDefinitions)
         {
             List<SpIdenitityValidation> spIdenitityValidations =
                 identityAttributeValidationDefinitions.IdentityAttributeValidationDefinitions

@@ -14,6 +14,8 @@
 
         public string Content { get; set; }
 
+        public AttributeState State { get; set; }
+
         public bool IsOverriden { get; set; }
     }
 }
