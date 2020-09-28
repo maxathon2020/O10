@@ -1,8 +1,10 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
+using Newtonsoft.Json;
 using O10.Client.Common.Interfaces;
 using O10.Client.Web.Common.Hubs;
 using O10.Core.Models;
+using O10.Web.Server.Dtos;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -43,15 +45,15 @@ namespace O10.Web.Server.Controllers
         }
 
         [HttpPost("SignalR")]
-        public IActionResult TestSignalR(long accountId = 0, string method = "Test", [FromBody] object arg = null)
+        public IActionResult TestSignalR(long accountId = 0, string method = "Test", string msg = "Test Message")
         {
             if(accountId != 0)
             {
-                _idenitiesHubContext.Clients.Group(accountId.ToString()).SendAsync(method, arg);
+                _idenitiesHubContext.Clients.Group(accountId.ToString()).SendAsync(method, new HubDiagnosticMessage { Message = msg });
             }
             else
             {
-                _idenitiesHubContext.Clients.All.SendAsync(method, arg);
+                _idenitiesHubContext.Clients.All.SendAsync(method, new HubDiagnosticMessage { Message = msg });
             }
 
             return Ok();

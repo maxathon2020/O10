@@ -51,9 +51,10 @@ namespace O10.Web.Server
         {
             services.AddCors(o => o.AddPolicy("EnableAllCors", builder =>
             {
-                builder.AllowAnyOrigin()
+                builder.WithOrigins("http://localhost:3000")
                        .AllowAnyMethod()
-                       .AllowAnyHeader();
+                       .AllowAnyHeader()
+                       .AllowCredentials();
             }));
 
             services.AddControllers().AddNewtonsoftJson();
