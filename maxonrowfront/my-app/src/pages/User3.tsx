@@ -4,7 +4,7 @@ import axios from 'axios';
 import { timeStamp } from 'console';
 import { register } from '../serviceWorker';
 import { queryAllByAttribute } from '@testing-library/react';
-
+import * as crypto from "crypto";
 
 class DataClass {
   private _publicSpendKey: string;
@@ -340,8 +340,9 @@ interface Schematics{
 }
 
 interface MyProps {
-
+  clientIdHandler: (arg0: string, arg1: {[key: string]: any}[])=>void,
 };
+
 interface MyState {
   data: DataClass;
 };
@@ -460,6 +461,62 @@ class User3 extends Component<MyProps, MyState>{
   componentWillMount(){
     this.getRootAtributes();
   }
+
+  componentDidMount(){
+    console.log("crypto.randomBytes(16).toString('hex');", crypto.randomBytes(16).toString('hex'))
+    // crypto
+    // var mykey = crypto.createCipher('aes-128-cbc', 'mypassword');
+    // var mystr = mykey.update('abc', 'utf8', 'hex')
+    // mystr += mykey.final('hex');
+
+    // console.log(mystr);
+  }
+
+  // componentDidUpdate(prevState:any, prevProps:any){
+  //   if(prevState!=this.state){
+  //     if(this.state.data.accountId!=null && prevState.data.accountId==null){
+  //       // {
+  //       //   “rootAttribute”: {
+  //       //     “attributeName”: string,
+  //       //     “originatingCommitment”: 64-chars hex-string,
+  //       //     “assetCommitment”: 64-chars hex-string,
+  //       //     “surjectionProof”: 192-chars hex-string
+  //       //   },
+  //       //   “associatedAttributes”: [
+  //       //     {
+  //       //       “attributeName”: string,
+  //       //       “assetCommitment”: 64-chars hex-string,
+  //       //       “bindingToRootCommitment”: 64-chars hex-string
+  //       //     }
+  //       //   ]
+  //       // }
+  
+  //       // let packageObj = {
+  //       //   rootAttribute: {
+  //       //     attributeName: "teststring",
+  //       //     originatingCommitment: "teststring",
+  //       //     assetCommitment: "teststring",
+  //       //     surjectionProof: "teststring"
+  //       //   },
+  //       //   associatedAttributes: [
+  //       //     {
+  //       //       attributeName: "teststring",
+  //       //       assetCommitment: "teststring",
+  //       //       bindingToRootCommitment: "teststring"
+  //       //     }, 
+  //       //     {
+  //       //       attributeName: "teststring",
+  //       //       assetCommitment: "teststring",
+  //       //       bindingToRootCommitment: "teststring"
+  //       //     }
+  //       //   ]
+  //       // }  
+  //       // let packageObj = [];
+  //       let packageObj:{[key: string]: any}[] = [];    
+  //       this.props.clientIdHandler(this.state.data.accountId, packageObj);
+  //     }
+  //   }
+  // }
 
   getRootAtributes = () => { 
 
@@ -932,7 +989,7 @@ class User3 extends Component<MyProps, MyState>{
               let data = this.state.data;
               data.loggedIn = false;
               data.loginRegisterErrorMessage = ""; 
-              data.accountId = "";
+              data.accountId = null;
               data.username = "";
               data.password = "";
               data.pulledIdentity = false;
@@ -1052,29 +1109,19 @@ class User3 extends Component<MyProps, MyState>{
       let packageObj = {};
       let attributeValues: {[key: string]: any};
       data.inputSchematics.forEach((attribute, key)=>{
-        let attributeObj = {
-          [attribute.attributeName]: attribute.input.toString()
+        if(attribute.attributeName!="Password"){
+          let attributeObj = {
+            [attribute.attributeName]: attribute.input.toString()
+          }
+          attributeValues = {...attributeValues, ...attributeObj}
         }
-        attributeValues = {...attributeValues, ...attributeObj}
       })
       packageObj = {
         issuer: data.issuerPublicKey, 
         attributeValues
       }
-      // if(rootAttributeId!=-1){
-      //   packageObj = {
-      //     issuer: data.issuerPublicKey, 
-      //     masterRootAttributeId: rootAttributeId,
-      //     attributeValues
-      //   }
-      // }else{
-      //   packageObj = {
-      //     issuer: data.issuerPublicKey, 
-      //     attributeValues
-      //   }
-      // }
       console.log("value of packageObj: ", packageObj);
-      axios.post("http://localhost:5003/api/User/AttributesIssuance?accountId="+data.accountId, packageObj)
+      axios.post("http://localhost:5003/api/User/AttributesIssuance?accountId="+data.accountId.toString(), packageObj)
       .then(resolve=>{
         console.log('value of resolve: ', resolve);
       })
@@ -1103,62 +1150,69 @@ class User3 extends Component<MyProps, MyState>{
       }
 
       let schematicList = data.inputSchematics.map((schematic, key)=>{
-        return(
-          <div
-            key={key}
-            style={{
-              color: 'white', 
-              marginTop: '5px', 
-              marginBottom: '5px'
-            }}
-          >
-            {checkRoot(schematic.type, key)}
+        if(schematic.attributeName!="Password"){
+          return(
             <div
+              key={key}
               style={{
-                color: 'white'
+                color: 'white', 
+                marginTop: '5px', 
+                marginBottom: '5px'
               }}
-            > 
-              Attribute Name - {schematic.attributeName}
-            </div>
-            <div>
+            >
+              {checkRoot(schematic.type, key)}
               <div
                 style={{
-                  display: 'flex', 
-                  flexDirection: 'row'
+                  color: 'white'
                 }}
-              >
+              > 
+                Attribute Name - {schematic.attributeName}
+              </div>
+              <div>
                 <div
                   style={{
-                    flex: 1, 
-                    color: "white"
+                    display: 'flex', 
+                    flexDirection: 'row'
                   }}
                 >
-                  Alias - {schematic.alias}
-                </div>
-                <div
-                  style={{
-                    flex: 1
-                  }}
-                >
-                  <input
-                    className='input'
-                    onChange={(e)=>{
-                      data.inputSchematics[key].input = e.target.value;
+                  <div
+                    style={{
+                      flex: 1, 
+                      color: "white"
                     }}
-                  />
+                  >
+                    Alias - {schematic.alias}
+                  </div>
+                  <div
+                    style={{
+                      flex: 1
+                    }}
+                  >
+                    <input
+                      className='input'
+                      onChange={(e)=>{
+                        data.inputSchematics[key].input = e.target.value;
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        );
+          );
+        }
       })
       return(
-        <div>
+        <div
+          style={{
+            textAlign: 'center'
+          }}
+        >
           {schematicList}
           <div
             className='button'
             style={{
-              marginTop: '10px'
+              marginTop: '10px', 
+              textAlign: 'center'
             }}
             onClick={()=>{
               sendData();
@@ -1252,7 +1306,9 @@ class User3 extends Component<MyProps, MyState>{
             background: 'blue',
             maxHeight: '50vh', 
             overflow: 'auto', 
-            marginTop: '5px'
+            marginTop: '5px', 
+            paddingTop: '5px', 
+            paddingBottom: '5px'
           }}
         >
           <div

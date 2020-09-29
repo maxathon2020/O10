@@ -3,11 +3,8 @@ import logo from './logo.svg';
 import './App.css';
 import NFT from './pages/NFT';
 import KYC from './pages/KYC';
-import User1 from './pages/User1';
-import User2 from './pages/User2';
 import User3 from './pages/User3';
 import Service from './pages/Service';
-import Identity from './pages/Identity';
 import Identity2 from './pages/identity2';
 import SignalRClass from './shared/signalR';
 
@@ -32,6 +29,15 @@ class DataClass{
   private _provider: string = "mxw1f8r0k5p7s85kv7jatwvmpartyy2j0s20y0p0yk";
   private _middleware: string = "mxw1md4u2zxz2ne5vsf9t4uun7q2k0nc3ly5g22dne";
 
+  private _signalR: SignalRClass
+
+  public get signalR():SignalRClass{
+    return this._signalR;
+  }
+
+  public set signalR(value: SignalRClass){
+    this._signalR = value;
+  }
 
   // //kyc-prov-1
   // private _kyc_provider: string = "mxw126l5vx5s478khryv5l597lhdsfvnq9tmvmzfsl";
@@ -198,6 +204,10 @@ class App extends Component<MyProps, MyState>{
   componentDidMount(){
     let signalR = new SignalRClass();
     signalR.initializeHub();
+  }
+
+  clientIdHandler = (clientId: string, packageObj: {[key: string]: any}[]) => {
+
   }
 
   initializeHandler = () => {
@@ -508,7 +518,7 @@ class App extends Component<MyProps, MyState>{
                     >
                       KYC
                     </Link>
-                  </li>
+                  </li> 
                   <li 
                     style={{
                       display: 'inline', 
@@ -518,49 +528,13 @@ class App extends Component<MyProps, MyState>{
                       padding: '5px'
                     }}
                   >
-                    <Link to="/user1"
+                    <Link to="/user"
                       style={{
                         textDecoration: 'none',
                         color: 'white'
                       }}
                     >
-                      User1
-                    </Link>
-                  </li>
-                  <li 
-                    style={{
-                      display: 'inline', 
-                      background: "black", 
-                      color: "white", 
-                      marginRight: '20px',
-                      padding: '5px'
-                    }}
-                  >
-                    <Link to="/user2"
-                      style={{
-                        textDecoration: 'none',
-                        color: 'white'
-                      }}
-                    >
-                      User2
-                    </Link>
-                  </li>
-                  <li 
-                    style={{
-                      display: 'inline', 
-                      background: "black", 
-                      color: "white", 
-                      marginRight: '20px',
-                      padding: '5px'
-                    }}
-                  >
-                    <Link to="/user3"
-                      style={{
-                        textDecoration: 'none',
-                        color: 'white'
-                      }}
-                    >
-                      User3
+                      User
                     </Link>
                   </li>
                   <li 
@@ -599,24 +573,6 @@ class App extends Component<MyProps, MyState>{
                       Identity Provider
                     </Link>
                   </li>
-                  <li 
-                    style={{
-                      display: 'inline', 
-                      background: "black", 
-                      color: "white", 
-                      marginRight: '20px',
-                      padding: '5px'
-                    }}
-                  >
-                    <Link to="/identity2"
-                      style={{
-                        textDecoration: 'none',
-                        color: 'white'
-                      }}
-                    >
-                      Identity Provider 2
-                    </Link>
-                  </li>
                 </ul>
               </nav>
             </div>
@@ -641,22 +597,17 @@ class App extends Component<MyProps, MyState>{
                 {this.addressesNFTKYC()}
                 <KYC Wallets={this.state.data.Wallets}/>
               </Route>
-              <Route path="/user1">
-                <User1/>
-              </Route>
-              <Route path="/user2">
-                <User2/>
-              </Route>
-              <Route path="/user3">
-                <User3/>
+              <Route path="/user">
+                <User3
+                  clientIdHandler={(accountId:string, packageObj:{[key: string]:any}[])=>{
+                    this.clientIdHandler(accountId, packageObj)
+                  }}
+                />
               </Route>
               <Route path="/service">
                 <Service/>
               </Route>
               <Route path="/identity">
-                <Identity/>
-              </Route>
-              <Route path="/identity2">
                 <Identity2
                   Wallets={this.state.data.Wallets}
                 />
