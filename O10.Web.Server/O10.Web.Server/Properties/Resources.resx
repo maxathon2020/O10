@@ -165,8 +165,8 @@
   <data name="ERR_NO_VALIDATION_PROOFS" xml:space="preserve">
     <value>Validation proofs were not provided</value>
   </data>
-  <data name="ERR_NO_VALUE_FOR_ROOT" xml:space="preserve">
-    <value>No value was provided for the root attribute</value>
+  <data name="ERR_NO_VALUE_FOR_ATTR" xml:space="preserve">
+    <value>No value was provided for the attribute having AttributeName '{0}'</value>
   </data>
   <data name="ERR_PROTECTION_ATTR_VERIFICATION_FAILED" xml:space="preserve">
     <value>Protection Attribute verification failed</value>

@@ -921,6 +921,11 @@ namespace O10.Web.Server.Controllers
             }
 
             string rootAttributeContent = attributes.FirstOrDefault(a => a.Key == rootAttributeDefinition.AttributeName).Value;
+            if(string.IsNullOrEmpty(rootAttributeContent))
+            {
+                throw new NoValueForAttributeException(rootAttributeDefinition.AttributeName);
+            }
+
             byte[] rootAssetId = _assetsService.GenerateAssetId(rootAttributeDefinition.SchemeId, rootAttributeContent);
 
             IssueAttributesRequestDTO request = new IssueAttributesRequestDTO

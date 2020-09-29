@@ -205,11 +205,11 @@ namespace O10.Web.Server.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to No value was provided for the root attribute.
+        ///   Looks up a localized string similar to No value was provided for the attribute having AttributeName &apos;{0}&apos;.
         /// </summary>
-        internal static string ERR_NO_VALUE_FOR_ROOT {
+        internal static string ERR_NO_VALUE_FOR_ATTR {
             get {
-                return ResourceManager.GetString("ERR_NO_VALUE_FOR_ROOT", resourceCulture);
+                return ResourceManager.GetString("ERR_NO_VALUE_FOR_ATTR", resourceCulture);
             }
         }
         
