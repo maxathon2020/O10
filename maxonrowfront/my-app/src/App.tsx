@@ -202,12 +202,48 @@ class App extends Component<MyProps, MyState>{
   }
 
   componentDidMount(){
-    let signalR = new SignalRClass();
-    signalR.initializeHub();
+    let data = this.state.data;
+    data.signalR = new SignalRClass();
+    this.setState({data}, ()=>{
+      this.state.data.signalR.initializeHub();
+    });
   }
 
-  clientIdHandler = (clientId: string, packageObj: {[key: string]: any}[]) => {
+  // Request for attributes issuance
+  // Method name: 
+  // RequestForIssuance
+  // Argument
+  // {
+  //   “rootAttribute”: {
+  //     “attributeName”: string,
+  //     “originatingCommitment”: 64-chars hex-string,
+  //     “assetCommitment”: 64-chars hex-string,
+  //     “surjectionProof”: 192-chars hex-string
+  //   },
+  //   “associatedAttributes”: [
+  //     {
+  //       “attributeName”: string,
+  //       “assetCommitment”: 64-chars hex-string,
+  //       “bindingToRootCommitment”: 64-chars hex-string
+  //     }
+  //   ]
+  // }
+  // 5f3ae2b02affea74c2ee6e6d53a2d6ded319c9905dea7f0b4bb9273819c76b65
+  // 4e2c16a6499dafab98da9e5a2c3d7ff418aead18fec0e074e61f1cdfa2c84a9c
+  // 204b9505556c687e3d8a491d1850054ac848896303fafaf18af2d3e933f97d88
+  // b4bbe17841ria25c144209eda794599eb632491842d5afb7f0eabcd9cd0bcecc8
 
+
+  addToGroup = (clientId: string) => {
+    console.log("inside addtogroup")
+    this.state.data.signalR.accountId = clientId;
+    console.log("&&&&&&&&&&&&&ADDTOGROUP&&&&&&&&&&&&&")
+    this.state.data.signalR.AddToGroup();
+    console.log("&&&&&&&&&&&&&ADDTOGROUP&&&&&&&&&&&&&")
+  }
+
+  requestForIssuance = (clientId: string, packageObj: {[key: string]: any}[]) => {
+    this.state.data.signalR.RequestForIssuance()
   }
 
   initializeHandler = () => {
@@ -599,8 +635,11 @@ class App extends Component<MyProps, MyState>{
               </Route>
               <Route path="/user">
                 <User3
-                  clientIdHandler={(accountId:string, packageObj:{[key: string]:any}[])=>{
-                    this.clientIdHandler(accountId, packageObj)
+                  addToGroup={(accountId: string)=>{
+                    this.addToGroup(accountId)
+                  }}
+                  requestForIssuance={(accountId:string, packageObj:{[key: string]:any}[])=>{
+                    this.requestForIssuance(accountId, packageObj)
                   }}
                 />
               </Route>

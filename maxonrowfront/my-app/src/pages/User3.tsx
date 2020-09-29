@@ -340,7 +340,8 @@ interface Schematics{
 }
 
 interface MyProps {
-  clientIdHandler: (arg0: string, arg1: {[key: string]: any}[])=>void,
+  requestForIssuance: (arg0: string, arg1: {[key: string]: any}[])=>void,
+  addToGroup: (arg0: string)=>void
 };
 
 interface MyState {
@@ -472,8 +473,16 @@ class User3 extends Component<MyProps, MyState>{
     // console.log(mystr);
   }
 
-  // componentDidUpdate(prevState:any, prevProps:any){
-  //   if(prevState!=this.state){
+
+
+  componentDidUpdate(prevState:any, prevProps:any){
+    // if(this.state.data!=undefined && prevState.data!=undefined){
+    //   console.log("value of this.state.data: ", this.state.data);
+    //   if(this.state.data.accountId!=null && prevState.data.accountId==null){
+    //     console.log("accountId has changed in state");
+    //   }
+    // }
+    //   if(prevState!=this.state){
   //     if(this.state.data.accountId!=null && prevState.data.accountId==null){
   //       // {
   //       //   “rootAttribute”: {
@@ -516,7 +525,16 @@ class User3 extends Component<MyProps, MyState>{
   //       this.props.clientIdHandler(this.state.data.accountId, packageObj);
   //     }
   //   }
-  // }
+  }
+
+  requestForIssuance = () => {
+    let packageObj:{[key: string]: any}[] = [];    
+    this.props.requestForIssuance(this.state.data.accountId, packageObj);
+  }
+
+  addToGroup = () => {
+    this.props.addToGroup(this.state.data.accountId);
+  }
 
   getRootAtributes = () => { 
 
@@ -712,6 +730,7 @@ class User3 extends Component<MyProps, MyState>{
           data.loginRegisterErrorMessage = "user successfully logged in";
           data.loggedIn = true;
           this.setState({data});
+          this.addToGroup();
         })
         .catch(error=>{
           console.log("value of error: ", error);
@@ -814,6 +833,7 @@ class User3 extends Component<MyProps, MyState>{
                 data.publicSpendKey = resolve.data.publicSpendKey;
                 data.publicViewKey = resolve.data.publicViewKey;
                 this.setState({data});
+                this.addToGroup();
               })
               .catch(error=>{
                 data.loginRegisterErrorMessage = "username or password not authenticated";
@@ -1121,13 +1141,14 @@ class User3 extends Component<MyProps, MyState>{
         attributeValues
       }
       console.log("value of packageObj: ", packageObj);
-      axios.post("http://localhost:5003/api/User/AttributesIssuance?accountId="+data.accountId.toString(), packageObj)
-      .then(resolve=>{
-        console.log('value of resolve: ', resolve);
-      })
-      .catch(error=>{
-        console.log("value of error: ", error);
-      })
+        axios.post("http://localhost:5003/api/User/AttributesIssuance?accountId="+data.accountId.toString(), packageObj)
+        .then(resolve=>{
+          console.log('value of resolve: ', resolve);
+        })
+        .catch(error=>{
+          console.log("value of error: ", error);
+        })
+      this.requestForIssuance();
     }
 
     if(data.inputSchematics.length>0){
@@ -1261,7 +1282,7 @@ class User3 extends Component<MyProps, MyState>{
 
   availableIdentityProviders = () => {
     let data = this.state.data;
-    console.log("**** in availableIdentityProviders and data: ", this.state.data);
+    // console.log("**** in availableIdentityProviders and data: ", this.state.data);
     if(data.loggedIn && data.identityAccounts.length==0 && !data.pulledIdentity){
       axios.get<IdentityAccounts[]>("http://localhost:5003/api/accounts?ofTypeOnly=1")
       .then(resolve=>{
