@@ -439,12 +439,11 @@ namespace O10.Web.Server.Services
                 return;
             }
 
+            var rootAttributeDefinition = await _assetsService.GetRootAttributeSchemeName(issuer.ToHexString()).ConfigureAwait(false);
+
             foreach (var item in spEmployees)
             {
-                byte[] employeeAssetId = await _assetsService.GenerateAssetId(
-                    (await _assetsService.GetRootAttributeSchemeName(issuer.ToHexString()).ConfigureAwait(false)).schemeName,
-                    item.RootAttributeRaw,
-                    issuer.ToHexString()).ConfigureAwait(false);
+                byte[] employeeAssetId = _assetsService.GenerateAssetId(rootAttributeDefinition.SchemeId, item.RootAttributeRaw);
 
                 if (employeeAssetId.Equals32(assetId) && item.SpEmployeeGroup != null)
                 {

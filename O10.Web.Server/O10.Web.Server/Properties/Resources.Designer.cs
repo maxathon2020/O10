@@ -205,6 +205,15 @@ namespace O10.Web.Server.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to No value was provided for the root attribute.
+        /// </summary>
+        internal static string ERR_NO_VALUE_FOR_ROOT {
+            get {
+                return ResourceManager.GetString("ERR_NO_VALUE_FOR_ROOT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Protection Attribute verification failed.
         /// </summary>
         internal static string ERR_PROTECTION_ATTR_VERIFICATION_FAILED {

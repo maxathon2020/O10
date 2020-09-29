@@ -728,17 +728,17 @@ namespace O10.Web.Server.Controllers
         [HttpGet("UserAssociatedAttributes")]
         public async Task<IActionResult> GetUserAssociatedAttributes(long accountId, string issuer)
         {
-            List<(string schemeName, string alias)> associatedAttributeSchemes = await _assetsService.GetAssociatedAttributeSchemeNames(issuer).ConfigureAwait(false);
-            List<(string schemeName, string content)> associatedAttributes = _dataAccessService.GetUserAssociatedAttributes(accountId, issuer).ToList();
+            var associatedAttributeSchemes = await _assetsService.GetAssociatedAttributeSchemeNames(issuer).ConfigureAwait(false);
+            var associatedAttributes = _dataAccessService.GetUserAssociatedAttributes(accountId, issuer).ToList();
 
             return Ok(associatedAttributeSchemes
-                .Where(a => a.schemeName != AttributesSchemes.ATTR_SCHEME_NAME_PASSWORD)
+                .Where(a => a.SchemeName != AttributesSchemes.ATTR_SCHEME_NAME_PASSWORD)
                 .Select(
                     a => new UserAssociatedAttributeDto
                     {
-                        SchemeName = a.schemeName,
-                        Alias = a.alias,
-                        Content = ResolveValue(associatedAttributes, a.schemeName, string.Empty)
+                        SchemeName = a.SchemeName,
+                        Alias = a.Alias,
+                        Content = ResolveValue(associatedAttributes, a.SchemeName, string.Empty)
                     }));
         }
 
@@ -905,7 +905,12 @@ namespace O10.Web.Server.Controllers
             var attributes = attributesIssuanceRequest.AttributeValues;
             var issuer = attributesIssuanceRequest.Issuer;
 
-            (string rootScheme, string _) = await _assetsService.GetRootAttributeSchemeName(attributesIssuanceRequest.Issuer).ConfigureAwait(false);
+            var rootAttributeDefinition = await _assetsService.GetRootAttributeSchemeName(attributesIssuanceRequest.Issuer).ConfigureAwait(false);
+            if(rootAttributeDefinition == null)
+            {
+                throw new NoRootAttributeSchemeDefinedException(attributesIssuanceRequest.Issuer);
+            }
+
             byte[] blindingPointRootToRoot = null;
 
             if (attributesIssuanceRequest.MasterRootAttributeId != null)
@@ -915,13 +920,12 @@ namespace O10.Web.Server.Controllers
                 blindingPointRootToRoot = _assetsService.GetCommitmentBlindedByPoint(rootAttributeMaster.AssetId, blindingPointRoot);
             }
 
-
-            string rootAttributeContent = attributes.FirstOrDefault(a => a.Key == rootScheme).Value;
-            byte[] rootAssetId = await _assetsService.GenerateAssetId(rootScheme, rootAttributeContent, issuer).ConfigureAwait(false);
+            string rootAttributeContent = attributes.FirstOrDefault(a => a.Key == rootAttributeDefinition.AttributeName).Value;
+            byte[] rootAssetId = _assetsService.GenerateAssetId(rootAttributeDefinition.SchemeId, rootAttributeContent);
 
             IssueAttributesRequestDTO request = new IssueAttributesRequestDTO
             {
-                Attributes = await GenerateAttributeValuesAsync(attributes, rootAssetId, rootScheme, issuer, blindingPointRootToRoot).ConfigureAwait(false),
+                Attributes = await GenerateAttributeValuesAsync(attributes, rootAssetId, rootAttributeDefinition.AttributeName, issuer, blindingPointRootToRoot).ConfigureAwait(false),
                 PublicSpendKey = attributesIssuanceRequest.MasterRootAttributeId == null ? account.PublicSpendKey.ToHexString() : null,
                 PublicViewKey = attributesIssuanceRequest.MasterRootAttributeId == null ? account.PublicViewKey.ToHexString() : null,
             };
@@ -972,7 +976,7 @@ namespace O10.Web.Server.Controllers
 
             return Ok(attributeValues);
 
-            async Task<Dictionary<string, IssueAttributesRequestDTO.AttributeValue>> GenerateAttributeValuesAsync(Dictionary<string, string> attributes, byte[] rootAssetId, string rootSchemeName, string issuer, byte[] blindingPointRootToRoot)
+            async Task<Dictionary<string, IssueAttributesRequestDTO.AttributeValue>> GenerateAttributeValuesAsync(Dictionary<string, string> attributes, byte[] rootAssetId, string rootAttributeName, string issuer, byte[] blindingPointRootToRoot)
             {
                 byte[] bindingKey = await persistency.BindingKeySource.Task.ConfigureAwait(false);
                 byte[] blindingPointAssociatedToParent = _assetsService.GetBlindingPoint(bindingKey, rootAssetId);
@@ -984,7 +988,7 @@ namespace O10.Web.Server.Controllers
                                 {
                                     Value = kv.Value,
                                     BlindingPointValue = _assetsService.GetBlindingPoint(bindingKey, rootAssetId, AsyncUtil.RunSync(async () => await _assetsService.GenerateAssetId(kv.Key, kv.Value, issuer).ConfigureAwait(false))),
-                                    BlindingPointRoot = kv.Key == rootSchemeName ? blindingPointRootToRoot : blindingPointAssociatedToParent
+                                    BlindingPointRoot = kv.Key == rootAttributeName ? blindingPointRootToRoot : blindingPointAssociatedToParent
                                 }))
                         .ToDictionary(kv => kv.Key, kv => kv.Value);
             }
@@ -1006,8 +1010,8 @@ namespace O10.Web.Server.Controllers
 
                 AccountDescriptor account = _accountsService.GetById(accountId);
 
-                (string rootSchemeName, string rootAlias) = await _assetsService.GetRootAttributeSchemeName(actionDetails.Issuer).ConfigureAwait(false);
-                byte[] rootAssetId = await _assetsService.GenerateAssetId(rootSchemeName, Uri.UnescapeDataString(requestForIdentity.IdCardContent), actionDetails.Issuer).ConfigureAwait(false);
+                var rootAttributeDefinition = await _assetsService.GetRootAttributeSchemeName(actionDetails.Issuer).ConfigureAwait(false);
+                byte[] rootAssetId = _assetsService.GenerateAssetId(rootAttributeDefinition.SchemeId, Uri.UnescapeDataString(requestForIdentity.IdCardContent));
                 byte[] protectionAssetId = await _assetsService.GenerateAssetId(AttributesSchemes.ATTR_SCHEME_NAME_PASSWORD, rootAssetId.ToHexString(), actionDetails.Issuer).ConfigureAwait(false);
 
                 _assetsService.GetBlindingPoint(ConfidentialAssetsHelper.PasswordHash(requestForIdentity.Password), protectionAssetId, out byte[] blindingPoint, out byte[] blindingFactor);
@@ -1037,16 +1041,12 @@ namespace O10.Web.Server.Controllers
                 try
                 {
                     _logger.LogIfDebug(() => $"[{accountId}]: Requesting Identity with URI {uri} and session data {JsonConvert.SerializeObject(identityRequest, new ByteArrayJsonConverter())}");
-                    await (await uri.PostJsonAsync(identityRequest).ContinueWith(async t =>
+                    await uri.PostJsonAsync(identityRequest).ContinueWith(t =>
                     {
                         if (t.IsCompletedSuccessfully)
                         {
-                            string rootAttributeScheme = (await _assetsService.GetRootAttributeSchemeName(actionDetails.Issuer).ConfigureAwait(false)).schemeName;
-                            byte[] assetId = await _assetsService.GenerateAssetId(
-                                rootAttributeScheme,
-                                requestForIdentity.IdCardContent,
-                                actionDetails.Issuer).ConfigureAwait(false);
-                            _dataAccessService.AddNonConfirmedRootAttribute(accountId, requestForIdentity.IdCardContent, actionDetails.Issuer, rootAttributeScheme, assetId);
+                            byte[] assetId = _assetsService.GenerateAssetId(rootAttributeDefinition.SchemeId, requestForIdentity.IdCardContent);
+                            _dataAccessService.AddNonConfirmedRootAttribute(accountId, requestForIdentity.IdCardContent, actionDetails.Issuer, rootAttributeDefinition.SchemeName, assetId);
 
                             if (!string.IsNullOrEmpty(requestForIdentity.ImageContent))
                             {
@@ -1058,7 +1058,7 @@ namespace O10.Web.Server.Controllers
                             error = t.ReceiveString().Result;
                             _logger.Error($"Failure during querying {actionDetails.ActionUri.DecodeFromString64()}, error: {(error ?? "NULL")}", t.Exception);
                         }
-                    }, TaskScheduler.Current).ConfigureAwait(false)).ConfigureAwait(false);
+                    }, TaskScheduler.Current).ConfigureAwait(false);
 
                 }
                 catch (Exception ex)
@@ -1536,9 +1536,9 @@ namespace O10.Web.Server.Controllers
         {
             IssuerActionDetails actionDetails = await GetActionDetails(target.DecodeFromString64()).ConfigureAwait(false);
 
-            var schemeNames = await _assetsService.GetAssociatedAttributeSchemeNames(actionDetails.Issuer).ConfigureAwait(false);
+            var attributeDefinitions = await _assetsService.GetAssociatedAttributeSchemeNames(actionDetails.Issuer).ConfigureAwait(false);
 
-            return Ok(new { IsPhotoRequired = schemeNames.Any(s => s.schemeName == AttributesSchemes.ATTR_SCHEME_NAME_PASSPORTPHOTO) });
+            return Ok(new { IsPhotoRequired = attributeDefinitions.Any(s => s.SchemeName == AttributesSchemes.ATTR_SCHEME_NAME_PASSPORTPHOTO) });
         }
     }
 }
