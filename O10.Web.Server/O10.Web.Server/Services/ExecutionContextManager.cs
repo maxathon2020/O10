@@ -90,61 +90,64 @@ namespace O10.Web.Server.Services
 
         public void InitializeStateExecutionServices(long accountId, byte[] secretKey, Func<long, IStateTransactionsService, IStateClientCryptoService, CancellationToken, IUpdater> updaterFactory = null)
         {
-            if (_statePersistencyItems.ContainsKey(accountId))
+            lock (_statePersistencyItems)
             {
-                _logger.Info($"[{accountId}]: Account with id {accountId} already registered at StatePersistency");
-                return;
-            }
-
-            _logger.Info($"[{accountId}]: {nameof(InitializeStateExecutionServices)} for account with id {accountId}");
-
-            try
-            {
-                IWitnessPackagesProvider packetsProvider = _witnessPackagesProviderRepository.GetInstance(_restApiConfiguration.WitnessProviderName);
-                IStateTransactionsService transactionsService = ActivatorUtilities.CreateInstance<StateTransactionsService>(_serviceProvider);
-                IStateClientCryptoService clientCryptoService = ActivatorUtilities.CreateInstance<StateClientCryptoService>(_serviceProvider);
-                IWalletSynchronizer walletSynchronizer = ActivatorUtilities.CreateInstance<StateWalletSynchronizer>(_serviceProvider);
-                StatePacketsExtractor statePacketsExtractor = ActivatorUtilities.CreateInstance<StatePacketsExtractor>(_serviceProvider);
-
-                CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
-
-                packetsProvider.Initialize(accountId, cancellationTokenSource.Token);
-                clientCryptoService.Initialize(secretKey);
-                transactionsService.AccountId = accountId;
-                ulong lastBlockHeight = AsyncUtil.RunSync(() => _gatewayService.GetLastBlockHeight(ConfidentialAssetsHelper.GetPublicKey(Ed25519.SecretKeyFromSeed(secretKey))));
-                transactionsService.Initialize(clientCryptoService, lastBlockHeight);
-                transactionsService.PipeOutTransactions.LinkTo(_gatewayService.PipeInTransactions);
-                statePacketsExtractor.Initialize(clientCryptoService);
-                statePacketsExtractor.AccountId = accountId;
-
-                IUpdater updater = updaterFactory != null ? updaterFactory(accountId, transactionsService, clientCryptoService, cancellationTokenSource.Token) : CreateStateUpdater(accountId, transactionsService, clientCryptoService, cancellationTokenSource.Token);
-
-                walletSynchronizer.Initialize(accountId, clientCryptoService);
-
-                packetsProvider.PipeOut.LinkTo(statePacketsExtractor.PipeIn);
-                statePacketsExtractor.PipeOutPackets.LinkTo(walletSynchronizer.PipeInPackets);
-                statePacketsExtractor.PipeOutProcessed.LinkTo(walletSynchronizer.PipeInPackage);
-                walletSynchronizer.PipeOutPackets.LinkTo(updater.PipeIn);
-
-                packetsProvider.Start();
-
-                var state = new StatePersistency
+                if (_statePersistencyItems.ContainsKey(accountId))
                 {
-                    AccountId = accountId,
-                    PacketsProvider = packetsProvider,
-                    TransactionsService = transactionsService,
-                    PacketsExtractor = statePacketsExtractor,
-                    ClientCryptoService = clientCryptoService,
-                    WalletSynchronizer = walletSynchronizer,
-                    CancellationTokenSource = cancellationTokenSource
-                };
+                    _logger.Info($"[{accountId}]: Account with id {accountId} already registered at StatePersistency");
+                    return;
+                }
 
-                _statePersistencyItems.Add(accountId, state);
-            }
-            catch (Exception ex)
-            {
-                _logger.Error($"[{accountId}]: Failure during {nameof(InitializeStateExecutionServices)} for account with id {accountId}", ex);
-                throw;
+                _logger.Info($"[{accountId}]: {nameof(InitializeStateExecutionServices)} for account with id {accountId}");
+
+                try
+                {
+                    IWitnessPackagesProvider packetsProvider = _witnessPackagesProviderRepository.GetInstance(_restApiConfiguration.WitnessProviderName);
+                    IStateTransactionsService transactionsService = ActivatorUtilities.CreateInstance<StateTransactionsService>(_serviceProvider);
+                    IStateClientCryptoService clientCryptoService = ActivatorUtilities.CreateInstance<StateClientCryptoService>(_serviceProvider);
+                    IWalletSynchronizer walletSynchronizer = ActivatorUtilities.CreateInstance<StateWalletSynchronizer>(_serviceProvider);
+                    StatePacketsExtractor statePacketsExtractor = ActivatorUtilities.CreateInstance<StatePacketsExtractor>(_serviceProvider);
+
+                    CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
+
+                    packetsProvider.Initialize(accountId, cancellationTokenSource.Token);
+                    clientCryptoService.Initialize(secretKey);
+                    transactionsService.AccountId = accountId;
+                    ulong lastBlockHeight = AsyncUtil.RunSync(() => _gatewayService.GetLastBlockHeight(ConfidentialAssetsHelper.GetPublicKey(Ed25519.SecretKeyFromSeed(secretKey))));
+                    transactionsService.Initialize(clientCryptoService, lastBlockHeight);
+                    transactionsService.PipeOutTransactions.LinkTo(_gatewayService.PipeInTransactions);
+                    statePacketsExtractor.Initialize(clientCryptoService);
+                    statePacketsExtractor.AccountId = accountId;
+
+                    IUpdater updater = updaterFactory != null ? updaterFactory(accountId, transactionsService, clientCryptoService, cancellationTokenSource.Token) : CreateStateUpdater(accountId, transactionsService, clientCryptoService, cancellationTokenSource.Token);
+
+                    walletSynchronizer.Initialize(accountId, clientCryptoService);
+
+                    packetsProvider.PipeOut.LinkTo(statePacketsExtractor.PipeIn);
+                    statePacketsExtractor.PipeOutPackets.LinkTo(walletSynchronizer.PipeInPackets);
+                    statePacketsExtractor.PipeOutProcessed.LinkTo(walletSynchronizer.PipeInPackage);
+                    walletSynchronizer.PipeOutPackets.LinkTo(updater.PipeIn);
+
+                    packetsProvider.Start();
+
+                    var state = new StatePersistency
+                    {
+                        AccountId = accountId,
+                        PacketsProvider = packetsProvider,
+                        TransactionsService = transactionsService,
+                        PacketsExtractor = statePacketsExtractor,
+                        ClientCryptoService = clientCryptoService,
+                        WalletSynchronizer = walletSynchronizer,
+                        CancellationTokenSource = cancellationTokenSource
+                    };
+
+                    _statePersistencyItems.Add(accountId, state);
+                }
+                catch (Exception ex)
+                {
+                    _logger.Error($"[{accountId}]: Failure during {nameof(InitializeStateExecutionServices)} for account with id {accountId}", ex);
+                    throw;
+                }
             }
         }
 
@@ -156,75 +159,78 @@ namespace O10.Web.Server.Services
 
         public void InitializeUtxoExecutionServices(long accountId, byte[] secretSpendKey, byte[] secretViewKey, byte[] pwdSecretKey, Func<long, IUtxoClientCryptoService, CancellationToken, IUpdater> updaterFactory = null)
         {
-            if (_utxoPersistencyItems.ContainsKey(accountId))
+            lock (_utxoPersistencyItems)
             {
-                _logger.Info($"[{accountId}]: account already registered at UtxoPersistency");
-                return;
-            }
-
-            _logger.Info($"[{accountId}]: {nameof(InitializeUtxoExecutionServices)}");
-
-            try
-            {
-                IWitnessPackagesProvider packetsProvider = _witnessPackagesProviderRepository.GetInstance(_restApiConfiguration.WitnessProviderName);
-                IUtxoTransactionsService transactionsService = ActivatorUtilities.CreateInstance<UtxoTransactionsService>(_serviceProvider);
-                IUtxoClientCryptoService clientCryptoService = ActivatorUtilities.CreateInstance<UtxoClientCryptoService>(_serviceProvider);
-                IRelationsBindingService relationsBindingService = ActivatorUtilities.CreateInstance<RelationsBindingService>(_serviceProvider);
-                UtxoWalletSynchronizer walletSynchronizer = ActivatorUtilities.CreateInstance<UtxoWalletSynchronizer>(_serviceProvider);
-                UtxoWalletPacketsExtractor utxoWalletPacketsExtractor = ActivatorUtilities.CreateInstance<UtxoWalletPacketsExtractor>(_serviceProvider);
-
-                CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
-
-                packetsProvider.Initialize(accountId, cancellationTokenSource.Token);
-                clientCryptoService.Initialize(secretSpendKey, secretViewKey);
-              
-                TaskCompletionSource<byte[]> pwdSource = new TaskCompletionSource<byte[]>();
-                if(pwdSecretKey != null)
+                if (_utxoPersistencyItems.ContainsKey(accountId))
                 {
-                    pwdSource.SetResult(pwdSecretKey);
+                    _logger.Info($"[{accountId}]: account already registered at UtxoPersistency");
+                    return;
                 }
-                relationsBindingService.Initialize(pwdSource);
-              
-                transactionsService.AccountId = accountId;
-                transactionsService.Initialize(clientCryptoService, relationsBindingService);
-                utxoWalletPacketsExtractor.AccountId = accountId;
-                utxoWalletPacketsExtractor.Initialize(clientCryptoService);
-                transactionsService.PipeOutTransactions.LinkTo(_gatewayService.PipeInTransactions);
-                transactionsService.PipeOutKeyImages.LinkTo(utxoWalletPacketsExtractor.PipeInKeyImages);
 
-                IUpdater userIdentitiesUpdater = updaterFactory != null ? updaterFactory(accountId, clientCryptoService, cancellationTokenSource.Token) : CreateUtxoUpdater(accountId, clientCryptoService, cancellationTokenSource.Token);
+                _logger.Info($"[{accountId}]: {nameof(InitializeUtxoExecutionServices)}");
 
-                walletSynchronizer.Initialize(accountId, clientCryptoService);
-
-                packetsProvider.PipeOut.LinkTo(utxoWalletPacketsExtractor.PipeIn);
-                utxoWalletPacketsExtractor.PipeOutPackets.LinkTo(walletSynchronizer.PipeInPackets);
-                utxoWalletPacketsExtractor.PipeOutProcessed.LinkTo(walletSynchronizer.PipeInPackage);
-                utxoWalletPacketsExtractor.PipeOutNotifications.LinkTo(userIdentitiesUpdater.PipInNotifications);
-
-                walletSynchronizer.PipeOutPackets.LinkTo(userIdentitiesUpdater.PipeIn);
-                walletSynchronizer.PipeOutNotifications.LinkTo(userIdentitiesUpdater.PipInNotifications);
-
-                packetsProvider.Start();
-
-                var state = new UtxoPersistencyEx
+                try
                 {
-                    AccountId = accountId,
-                    PacketsProvider = packetsProvider,
-                    TransactionsService = transactionsService,
-                    ClientCryptoService = clientCryptoService,
-                    RelationsBindingService = relationsBindingService,
-                    PacketsExtractor = utxoWalletPacketsExtractor,
-                    WalletSynchronizer = walletSynchronizer,
-                    CancellationTokenSource = cancellationTokenSource,
-                    BindingKeySource = pwdSource
-                };
-                _utxoPersistencyItems.Add(accountId, state);
-            }
-            catch (Exception ex)
-            {
-                _logger.Error($"[{accountId}]: Failure during {nameof(InitializeUtxoExecutionServices)}", ex);
+                    IWitnessPackagesProvider packetsProvider = _witnessPackagesProviderRepository.GetInstance(_restApiConfiguration.WitnessProviderName);
+                    IUtxoTransactionsService transactionsService = ActivatorUtilities.CreateInstance<UtxoTransactionsService>(_serviceProvider);
+                    IUtxoClientCryptoService clientCryptoService = ActivatorUtilities.CreateInstance<UtxoClientCryptoService>(_serviceProvider);
+                    IRelationsBindingService relationsBindingService = ActivatorUtilities.CreateInstance<RelationsBindingService>(_serviceProvider);
+                    UtxoWalletSynchronizer walletSynchronizer = ActivatorUtilities.CreateInstance<UtxoWalletSynchronizer>(_serviceProvider);
+                    UtxoWalletPacketsExtractor utxoWalletPacketsExtractor = ActivatorUtilities.CreateInstance<UtxoWalletPacketsExtractor>(_serviceProvider);
 
-                throw;
+                    CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
+
+                    packetsProvider.Initialize(accountId, cancellationTokenSource.Token);
+                    clientCryptoService.Initialize(secretSpendKey, secretViewKey);
+
+                    TaskCompletionSource<byte[]> pwdSource = new TaskCompletionSource<byte[]>();
+                    if (pwdSecretKey != null)
+                    {
+                        pwdSource.SetResult(pwdSecretKey);
+                    }
+                    relationsBindingService.Initialize(pwdSource);
+
+                    transactionsService.AccountId = accountId;
+                    transactionsService.Initialize(clientCryptoService, relationsBindingService);
+                    utxoWalletPacketsExtractor.AccountId = accountId;
+                    utxoWalletPacketsExtractor.Initialize(clientCryptoService);
+                    transactionsService.PipeOutTransactions.LinkTo(_gatewayService.PipeInTransactions);
+                    transactionsService.PipeOutKeyImages.LinkTo(utxoWalletPacketsExtractor.PipeInKeyImages);
+
+                    IUpdater userIdentitiesUpdater = updaterFactory != null ? updaterFactory(accountId, clientCryptoService, cancellationTokenSource.Token) : CreateUtxoUpdater(accountId, clientCryptoService, cancellationTokenSource.Token);
+
+                    walletSynchronizer.Initialize(accountId, clientCryptoService);
+
+                    packetsProvider.PipeOut.LinkTo(utxoWalletPacketsExtractor.PipeIn);
+                    utxoWalletPacketsExtractor.PipeOutPackets.LinkTo(walletSynchronizer.PipeInPackets);
+                    utxoWalletPacketsExtractor.PipeOutProcessed.LinkTo(walletSynchronizer.PipeInPackage);
+                    utxoWalletPacketsExtractor.PipeOutNotifications.LinkTo(userIdentitiesUpdater.PipInNotifications);
+
+                    walletSynchronizer.PipeOutPackets.LinkTo(userIdentitiesUpdater.PipeIn);
+                    walletSynchronizer.PipeOutNotifications.LinkTo(userIdentitiesUpdater.PipInNotifications);
+
+                    packetsProvider.Start();
+
+                    var state = new UtxoPersistencyEx
+                    {
+                        AccountId = accountId,
+                        PacketsProvider = packetsProvider,
+                        TransactionsService = transactionsService,
+                        ClientCryptoService = clientCryptoService,
+                        RelationsBindingService = relationsBindingService,
+                        PacketsExtractor = utxoWalletPacketsExtractor,
+                        WalletSynchronizer = walletSynchronizer,
+                        CancellationTokenSource = cancellationTokenSource,
+                        BindingKeySource = pwdSource
+                    };
+                    _utxoPersistencyItems.Add(accountId, state);
+                }
+                catch (Exception ex)
+                {
+                    _logger.Error($"[{accountId}]: Failure during {nameof(InitializeUtxoExecutionServices)}", ex);
+
+                    throw;
+                }
             }
         }
 
