@@ -254,6 +254,7 @@ namespace O10.Web.Server.Services
             }
             catch (Exception ex) when (ex is NoValidationProofsException || ex is ValidationProofFailedException || ex is ValidationProofsWereNotCompleteException)
             {
+                _idenitiesHubContext.Clients.Group(_accountId.ToString(CultureInfo.InvariantCulture)).SendAsync("PushAuthorizationFailed", new { Code = 3, ex.Message }).Wait();
                 _idenitiesHubContext.Clients.Group(universalProofs.SessionKey).SendAsync("PushSpAuthorizationFailed", new { Code = 3, ex.Message }).Wait();
                 throw;
             }
@@ -284,6 +285,14 @@ namespace O10.Web.Server.Services
             }
             else
             {
+                await _idenitiesHubContext
+                    .Clients
+                    .Group(_accountId.ToString(CultureInfo.InvariantCulture))
+                    .SendAsync("PushAuthorizationSucceeded", new ServiceProviderRegistrationDto
+                    {
+                        ServiceProviderRegistrationId = registrationId.ToString(CultureInfo.InvariantCulture),
+                        Commitment = registrationProof.AssetCommitments[0].ToHexString()
+                    }).ConfigureAwait(false);
                 ProceedCorrectAuthentication(universalProofs.KeyImage, universalProofs.SessionKey);
             }
         }

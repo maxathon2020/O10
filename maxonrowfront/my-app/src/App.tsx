@@ -11,6 +11,7 @@ import Identity from './pages/Identity';
 import Identity2 from './pages/identity2';
 import SignalRClass from "../src/shared/signalR";
 
+import AccountsAPI, { AccountType } from './shared/accountsAPI';
 
 // import {ProviderOrSignerRequest} from './shared/initialize';
 import {
@@ -24,9 +25,11 @@ import {addressBook} from "./shared/addressBook";
 import ProviderOrSignerRequest from './shared/initialize';
 import { Provider } from 'mxw-sdk-js/dist/providers';
 import './css/main.css';
+import Axios from 'axios';
 
 
 class DataClass{
+  public baseApiUri = "http://localhost:5003";
   public addressBook = addressBook;
   private _wallet: string = "mxw127sn3dxpr6880tjlwfk7u007cway5my4lpjl4z";
   private _issuer: string = "mxw1k9sxz0h3yeh0uzmxet2rmsj7xe5zg54eq7vhla";
@@ -188,12 +191,16 @@ interface MyState {
 
 
 class App extends Component<MyProps, MyState>{
-  
+  accountsApi: AccountsAPI;
+
   constructor(props: MyProps){
     super(props);
     this.state = {
         data: new DataClass()
     }
+    this.accountsApi = new AccountsAPI(this.state.data.baseApiUri);
+
+    this.initializeAccounts();
   }
 
   componentDidMount(){
@@ -201,8 +208,17 @@ class App extends Component<MyProps, MyState>{
     signalR.initializeHub();
   }
 
+  initializeAccounts() {
+    this.accountsApi.getAll().then(r => {
+      r.forEach(a => {        
+        console.log(a);
+      });
+    })
+  }
+
   initializeHandler = () => {
     let data = this.state.data;
+
     console.log('data.addressBook: ', data.addressBook);
     data.addressBook.forEach(element => {
       if(element.Address==data.wallet){
@@ -456,7 +472,7 @@ class App extends Component<MyProps, MyState>{
       </div>
     );
   }
-
+  
   render(){
     return (
       <div
@@ -600,14 +616,13 @@ class App extends Component<MyProps, MyState>{
                       Identity Provider
                     </Link>
                   </li>
-
                   <li 
                     style={{
                       display: 'inline', 
                       background: "black", 
                       color: "white", 
-                      padding: '5px', 
-                      marginRight: '20px'
+                      marginRight: '20px',
+                      padding: '5px'
                     }}
                   >
                     <Link to="/identity2"
@@ -674,6 +689,7 @@ class App extends Component<MyProps, MyState>{
       </div>
     );
   }  
+
 }
 
 export default App;

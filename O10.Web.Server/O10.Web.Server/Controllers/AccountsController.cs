@@ -284,6 +284,29 @@ namespace O10.Web.Server.Controllers
             }
         }
 
+        [HttpPost("KeyValues")]
+        public IActionResult SetAccountKeyValues(long accountId, [FromBody] Dictionary<string, string> keyValues)
+        {
+            _dataAccessService.SetAccountKeyValues(accountId, keyValues);
+
+            
+            return Ok(_dataAccessService.GetAccountKeyValues(accountId));
+        }
+
+        [HttpDelete("KeyValues")]
+        public IActionResult DeleteAccountKeyValues(long accountId, [FromBody] List<string> keys)
+        {
+            _dataAccessService.RemoveAccountKeyValues(accountId, keys);
+
+            return Ok(_dataAccessService.GetAccountKeyValues(accountId));
+        }
+
+        [HttpGet("KeyValues")]
+        public IActionResult GetAccountKeyValues(long accountId)
+        {
+            return Ok(_dataAccessService.GetAccountKeyValues(accountId));
+        }
+
         private ObjectResult InternalServerError(Exception ex)
         {
             return StatusCode(StatusCodes.Status500InternalServerError, new { ex.Message });
