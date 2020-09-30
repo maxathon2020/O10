@@ -914,14 +914,23 @@ namespace O10.Web.Server.Controllers
                 {
                     throw new NoRootAttributeSchemeDefinedException(attributesIssuanceRequest.Issuer);
                 }
+                else
+                {
+                    _logger.Debug("rootAttributeDefinition obtained");
+                }
 
                 byte[] blindingPointRootToRoot = null;
 
                 if (attributesIssuanceRequest.MasterRootAttributeId != null)
                 {
+                    _logger.Debug("attributesIssuanceRequest.MasterRootAttributeId != null");
                     var rootAttributeMaster = _dataAccessService.GetUserRootAttribute(attributesIssuanceRequest.MasterRootAttributeId.Value);
                     byte[] blindingPointRoot = _assetsService.GetBlindingPoint(await persistency.BindingKeySource.Task.ConfigureAwait(false), rootAttributeMaster.AssetId);
                     blindingPointRootToRoot = _assetsService.GetCommitmentBlindedByPoint(rootAttributeMaster.AssetId, blindingPointRoot);
+                }
+                else
+                {
+                    _logger.Debug("attributesIssuanceRequest.MasterRootAttributeId == null");
                 }
 
                 string rootAttributeContent = attributes.FirstOrDefault(a => a.Key == rootAttributeDefinition.AttributeName).Value;
