@@ -75,6 +75,8 @@ namespace O10.Web.Server.Controllers
             if (accountDescriptor.AccountType == AccountType.User)
             {
                 _executionContextManager.InitializeUtxoExecutionServices(accountDescriptor.AccountId, accountDescriptor.SecretSpendKey, accountDescriptor.SecretViewKey, accountDescriptor.PwdHash);
+                var persistency = _executionContextManager.ResolveUtxoExecutionServices(accountDto.AccountId);
+                persistency.BindingKeySource.SetResult(ConfidentialAssetsHelper.PasswordHash(accountDto.Password));
             }
             else
             {

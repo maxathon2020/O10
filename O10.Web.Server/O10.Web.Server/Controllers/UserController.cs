@@ -940,6 +940,7 @@ namespace O10.Web.Server.Controllers
                 }
 
                 byte[] rootAssetId = _assetsService.GenerateAssetId(rootAttributeDefinition.SchemeId, rootAttributeContent);
+                _logger.Debug($"rootAssetId = {rootAssetId?.ToHexString()??"NULL"}");
 
                 IssueAttributesRequestDTO request = new IssueAttributesRequestDTO
                 {
