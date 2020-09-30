@@ -11,10 +11,10 @@ COPY ["O10.Web.Server/O10.Web.Server.csproj", "O10.Web.Server/"]
 RUN dotnet restore "O10.Web.Server/O10.Web.Server.csproj"
 COPY . .
 WORKDIR "/src/O10.Web.Server"
-RUN dotnet build "O10.Web.Server.csproj" -c Release -o /app/build
+RUN dotnet build "O10.Web.Server.csproj" -c Debug -o /app/build
 
 FROM build AS publish
-RUN dotnet publish "O10.Web.Server.csproj" -c Release -o /app/publish
+RUN dotnet publish "O10.Web.Server.csproj" -c Debug -o /app/publish
 
 FROM base AS final
 WORKDIR /app
