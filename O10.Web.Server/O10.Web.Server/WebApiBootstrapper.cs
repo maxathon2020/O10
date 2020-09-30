@@ -8,6 +8,7 @@ using O10.Client.Common.Configuration;
 using O10.Client.Common.Interfaces;
 using O10.Core.Configuration;
 using O10.Core.Logging;
+using O10.Core.ExtensionMethods;
 
 namespace O10.Web.Server
 {

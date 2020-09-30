@@ -256,6 +256,7 @@ class DataClass{
 
 interface MyProps {
   Wallets: ProviderOrSignerRequest, 
+  addToGroup: (arg0: string)=>void
 };
 interface MyState {
   data: DataClass;
@@ -371,6 +372,7 @@ class Identity2 extends Component<MyProps, MyState>{
           data.loginRegisterErrorMessage = "user successfully logged in";
           data.loggedIn = true;
           this.setState({data});
+          this.props.addToGroup(accountId);
         })
         .catch(error=>{
           let data = this.state.data;

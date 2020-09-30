@@ -17,11 +17,15 @@ using O10.Web.Server.Dtos;
 using O10.Web.Server.Dtos.User;
 using O10.Core.Translators;
 using O10.Client.DataLayer.Model;
+using Microsoft.AspNetCore.Http;
+using O10.Web.Server.Exceptions;
+using O10.Client.Common.Exceptions;
+using O10.Crypto.ConfidentialAssets;
 
 namespace O10.Web.Server.Controllers
 {
     [ApiController]
-    [Route("[controller]")]
+    [Route("api/[controller]")]
     public class AccountsController : ControllerBase
     {
         private readonly IAccountsServiceEx _accountsService;
@@ -61,45 +65,36 @@ namespace O10.Web.Server.Controllers
         {
             _logger.LogIfDebug(() => $"[{accountDto.AccountId}]: Started authentication of the account {JsonConvert.SerializeObject(accountDto)}");
 
-            try
+            var accountDescriptor = _accountsService.Authenticate(accountDto.AccountId, accountDto.Password);
+
+            if (accountDescriptor == null)
             {
-                var accountDescriptor = _accountsService.Authenticate(accountDto.AccountId, accountDto.Password);
-
-                if (accountDescriptor == null)
-                {
-                    return Unauthorized(new { Message = "Failed to authenticate account" });
-                }
-
-                if (accountDescriptor.AccountType == AccountType.User)
-                {
-                    _executionContextManager.InitializeUtxoExecutionServices(accountDescriptor.AccountId, accountDescriptor.SecretSpendKey, accountDescriptor.SecretViewKey, accountDescriptor.PwdHash);
-                }
-                else
-                {
-                    _executionContextManager.InitializeStateExecutionServices(accountDescriptor.AccountId, accountDescriptor.SecretSpendKey);
-                }
-
-                var forLog = new
-                {
-                    accountDescriptor.AccountId,
-                    accountDescriptor.AccountType,
-                    accountDescriptor.AccountInfo,
-                    SecretSpendKey = accountDescriptor.SecretSpendKey.ToHexString(),
-                    PublicSpendKey = accountDescriptor.PublicSpendKey.ToHexString(),
-                    SecretViewKey = accountDescriptor.SecretViewKey.ToHexString(),
-                    PublicViewKey = accountDescriptor.PublicViewKey.ToHexString()
-                };
-
-                _logger.LogIfDebug(() => $"[{accountDto.AccountId}]: Authenticated account {JsonConvert.SerializeObject(forLog)}");
-
-                var ret = new { accountDescriptor.AccountId, accountDescriptor.AccountType, accountDescriptor.AccountInfo, PublicSpendKey = accountDescriptor.PublicSpendKey.ToHexString(), PublicViewKey = accountDescriptor.PublicViewKey.ToHexString() };
-                return Ok(ret);
+                throw new AccountAuthenticationFailedException(accountDto.AccountId);
             }
-            catch (Exception ex)
+
+            if (accountDescriptor.AccountType == AccountType.User)
             {
-                _logger.Error($"[{accountDto.AccountId}]: failure during authentication", ex);
-                throw;
+                _executionContextManager.InitializeUtxoExecutionServices(accountDescriptor.AccountId, accountDescriptor.SecretSpendKey, accountDescriptor.SecretViewKey, accountDescriptor.PwdHash);
             }
+            else
+            {
+                _executionContextManager.InitializeStateExecutionServices(accountDescriptor.AccountId, accountDescriptor.SecretSpendKey);
+            }
+
+            var forLog = new
+            {
+                accountDescriptor.AccountId,
+                accountDescriptor.AccountType,
+                accountDescriptor.AccountInfo,
+                SecretSpendKey = accountDescriptor.SecretSpendKey.ToHexString(),
+                PublicSpendKey = accountDescriptor.PublicSpendKey.ToHexString(),
+                SecretViewKey = accountDescriptor.SecretViewKey.ToHexString(),
+                PublicViewKey = accountDescriptor.PublicViewKey.ToHexString()
+            };
+
+            _logger.LogIfDebug(() => $"[{accountDto.AccountId}]: Authenticated account {JsonConvert.SerializeObject(forLog)}");
+
+            return Ok(_translatorsRepository.GetInstance<AccountDescriptor, AccountDto>().Translate(accountDescriptor));
         }
 
         [HttpPost("Start")]
@@ -114,7 +109,7 @@ namespace O10.Web.Server.Controllers
 
                 if (accountDescriptor == null)
                 {
-                    return BadRequest();
+                    throw new AccountNotFoundException(accountDto.AccountId);
                 }
 
                 if (accountDescriptor.AccountType == AccountType.User)
@@ -139,8 +134,7 @@ namespace O10.Web.Server.Controllers
 
                 _logger.LogIfDebug(() => $"[{accountDto.AccountId}]: Authenticated account {JsonConvert.SerializeObject(forLog)}");
 
-                var ret = new { accountDescriptor.AccountId, accountDescriptor.AccountType, accountDescriptor.AccountInfo, PublicSpendKey = accountDescriptor.PublicSpendKey.ToHexString(), PublicViewKey = accountDescriptor.PublicViewKey.ToHexString() };
-                return Ok(ret);
+                return Ok(_translatorsRepository.GetInstance<AccountDescriptor, AccountDto>().Translate(accountDescriptor));
             }
             catch (Exception ex)
             {
@@ -156,11 +150,11 @@ namespace O10.Web.Server.Controllers
 
             if (accountDescriptor == null)
             {
-                return Unauthorized(new { Message = "Failed to authenticate account" });
+                throw new AccountAuthenticationFailedException(bindingKeyRequest.AccountId);
             }
 
             var persistency = _executionContextManager.ResolveUtxoExecutionServices(bindingKeyRequest.AccountId);
-            persistency.BindingKeySource.SetResult(accountDescriptor.PwdHash);
+                persistency.BindingKeySource.SetResult(ConfidentialAssetsHelper.PasswordHash(bindingKeyRequest.Password));
 
             return Ok();
         }
@@ -170,12 +164,13 @@ namespace O10.Web.Server.Controllers
         {
             try
             {
-                _accountsService.Create((AccountType)accountDto.AccountType, accountDto.AccountInfo, accountDto.Password);
-                return Ok();
+                long accountId = _accountsService.Create((AccountType)accountDto.AccountType, accountDto.AccountInfo, accountDto.Password);
+                var accountDescriptor = _accountsService.GetById(accountId);
+                return Ok(_translatorsRepository.GetInstance<AccountDescriptor, AccountDto>().Translate(accountDescriptor));
             }
             catch (Exception ex)
             {
-                return BadRequest(new { message = ex.Message });
+                return BadRequest(new { ex.Message });
             }
         }
 
@@ -189,29 +184,15 @@ namespace O10.Web.Server.Controllers
 
                 var accounts = _accountsService.GetAll()
                     .Where(a => scenarioAccounts.Any(sa => sa.AccountId == a.AccountId))
-                    .Select(a => new AccountDto
-                    {
-                        AccountId = a.AccountId,
-                        AccountType = (byte)a.AccountType,
-                        AccountInfo = a.AccountInfo,
-                        PublicSpendKey = a.PublicSpendKey?.ToHexString(),
-                        PublicViewKey = a.PublicViewKey?.ToHexString()
-                    });
+                    .Select(a => _translatorsRepository.GetInstance<AccountDescriptor, AccountDto>().Translate(a));
 
                 return Ok(accounts);
             }
             else
             {
                 var accounts = _accountsService.GetAll()
-                    .Where(a => withPrivate || (!a.IsPrivate && (ofTypeOnly == 0 || (int)a.AccountType == ofTypeOnly)))
-                    .Select(a => new AccountDto
-                    {
-                        AccountId = a.AccountId,
-                        AccountType = (byte)a.AccountType,
-                        AccountInfo = a.AccountInfo,
-                        PublicSpendKey = a.PublicSpendKey?.ToHexString(),
-                        PublicViewKey = a.PublicViewKey?.ToHexString()
-                    });
+                    .Where(a => (withPrivate || !a.IsPrivate) && (ofTypeOnly == 0 || (int)a.AccountType == ofTypeOnly))
+                    .Select(a => _translatorsRepository.GetInstance<AccountDescriptor, AccountDto>().Translate(a));
 
                 return Ok(accounts);
             }
@@ -220,15 +201,15 @@ namespace O10.Web.Server.Controllers
         [HttpGet("{accountId}")]
         public IActionResult GetById(long accountId)
         {
-            var account = _accountsService.GetById(accountId);
-            return Ok(new AccountDto
+            var accountDescriptor = _accountsService.GetById(accountId);
+            var accountDto = _translatorsRepository.GetInstance<AccountDescriptor, AccountDto>().Translate(accountDescriptor);
+            
+            if(accountDto == null)
             {
-                AccountId = account.AccountId,
-                AccountType = (byte)account.AccountType,
-                AccountInfo = account.AccountInfo,
-                PublicSpendKey = account.PublicSpendKey?.ToHexString(),
-                PublicViewKey = account.PublicViewKey?.ToHexString()
-            });
+                throw new AccountNotFoundException(accountId);
+            }
+            
+            return Ok(accountDto);
         }
 
         [HttpPost("DuplicateUserAccount")]
@@ -297,8 +278,38 @@ namespace O10.Web.Server.Controllers
 
                 return Ok();
             }
+            else
+            {
+                throw new AccountAuthenticationFailedException(accountId);
+            }
+        }
 
-            return BadRequest();
+        [HttpPost("KeyValues")]
+        public IActionResult SetAccountKeyValues(long accountId, [FromBody] Dictionary<string, string> keyValues)
+        {
+            _dataAccessService.SetAccountKeyValues(accountId, keyValues);
+
+            
+            return Ok(_dataAccessService.GetAccountKeyValues(accountId));
+        }
+
+        [HttpDelete("KeyValues")]
+        public IActionResult DeleteAccountKeyValues(long accountId, [FromBody] List<string> keys)
+        {
+            _dataAccessService.RemoveAccountKeyValues(accountId, keys);
+
+            return Ok(_dataAccessService.GetAccountKeyValues(accountId));
+        }
+
+        [HttpGet("KeyValues")]
+        public IActionResult GetAccountKeyValues(long accountId)
+        {
+            return Ok(_dataAccessService.GetAccountKeyValues(accountId));
+        }
+
+        private ObjectResult InternalServerError(Exception ex)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, new { ex.Message });
         }
     }
 }

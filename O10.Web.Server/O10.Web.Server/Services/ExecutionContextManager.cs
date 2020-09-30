@@ -22,6 +22,7 @@ using Chaos.NaCl;
 using O10.Core;
 using O10.Client.Common.Configuration;
 using System.Threading.Tasks;
+using O10.Web.Server.Exceptions;
 
 namespace O10.Web.Server.Services
 {
@@ -247,9 +248,25 @@ namespace O10.Web.Server.Services
             }
         }
 
-        public StatePersistency ResolveStateExecutionServices(long accountId) => _statePersistencyItems[accountId];
+        public StatePersistency ResolveStateExecutionServices(long accountId)
+        {
+            if(!_statePersistencyItems.ContainsKey(accountId))
+            {
+                throw new ExecutionContextNotStartedException(accountId);
+            }
 
-        public UtxoPersistencyEx ResolveUtxoExecutionServices(long accountId) => _utxoPersistencyItems[accountId];
+            return _statePersistencyItems[accountId];
+        }
+
+        public UtxoPersistencyEx ResolveUtxoExecutionServices(long accountId)
+        {
+            if (!_utxoPersistencyItems.ContainsKey(accountId))
+            {
+                throw new ExecutionContextNotStartedException(accountId);
+            }
+
+            return _utxoPersistencyItems[accountId];
+        }
 
         public void UnregisterExecutionServices(long accountId)
         {

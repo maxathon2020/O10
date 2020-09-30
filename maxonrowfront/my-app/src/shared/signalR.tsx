@@ -49,8 +49,9 @@ export default class SignalRClass{
     // Start the connection.
     start();
 
-    this.hubConnection.on("PushRegistration", (i) => {
-			this.registrations.push(i);
+    this.hubConnection.on("RequestForIssuance", (i) => {
+      console.info("RequestForIssuance");
+			console.info(i);
 		});
 		this.hubConnection.on("PushAttribute", (i) => {
 			this.spAttributes.push(i);
@@ -67,8 +68,10 @@ export default class SignalRClass{
   }
 
   public AddToGroup(){
-    console.log("inside AddToGroup")
-    this.hubConnection.invoke("AddToGroup", this.accountId)
+    console.log("inside AddToGroup(" + this.accountId + ")");
+    this.hubConnection
+       .invoke("AddToGroup", this.accountId)
+       .then(r => {},e => {console.error(e)});
   }
 
   public RequestForIssuance(){

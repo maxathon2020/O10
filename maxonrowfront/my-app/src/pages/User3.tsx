@@ -1148,7 +1148,7 @@ class User3 extends Component<MyProps, MyState>{
         .catch(error=>{
           console.log("value of error: ", error);
         })
-      this.requestForIssuance();
+      //this.requestForIssuance();
     }
 
     if(data.inputSchematics.length>0){
