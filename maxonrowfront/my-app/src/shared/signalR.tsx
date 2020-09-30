@@ -93,11 +93,13 @@ export default class SignalRClass{
     // Start the connection.
     start();
 
-    this.hubConnection.on("PushRegistration", (i) => {
-			this.registrations.push(i);
+    this.hubConnection.on("RequestForIssuance", (i) => {
+      console.info("RequestForIssuance");
+			console.info(i);
 		});
 		this.hubConnection.on("PushAttribute", (i) => {
-			this.spAttributes.push(i);
+      // this.spAttributes.push(i);
+      console.log('value of i: ', i);
     });
     this.hubConnection.on("RequestForIssuance", (i) => {
       console.info("RequestForIssuance");

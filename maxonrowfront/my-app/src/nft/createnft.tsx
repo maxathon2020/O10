@@ -18,7 +18,7 @@ export default class TokenCreator{
         wallet: mxw.Wallet,
         itemMetadata: string, 
         itemProperties: string
-        ) {
+        ) { 
         this._issuer = issuer;
         this._wallet = wallet;
         this._symbol = symbol;

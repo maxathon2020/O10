@@ -56,4 +56,6 @@ artifacts/
 !*.[Cc]ache/
 /NugetSource
 /**/.vs/
-
+*.dat
+/O10.Web.Server/O10.Web.Server/O10.Web.Server.Debug.csproj
+/O10.Web.Server/O10.Web.Server.Debug.sln

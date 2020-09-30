@@ -12,6 +12,8 @@ class DataClass {
   private _issuerPublicKey: string = "";
   private _pulledIdentity: boolean;
 
+  private _selectedProviderName: string = "";
+
   private _masterID: number = -1;
 
   public get masterID():number{
@@ -20,6 +22,14 @@ class DataClass {
 
   public set masterID(value:number){
     this._masterID = value;
+  }
+
+  public set selectedProviderName(value: string){
+    this._selectedProviderName = value;
+  }
+
+  public get selectedProviderName(): string{
+    return this._selectedProviderName;
   }
 
   public set publicSpendKey(value: string){
@@ -620,7 +630,6 @@ class User3 extends Component<MyProps, MyState>{
     return returnData;
   }
 
-
   loginAccount = async() => {
     let data = this.state.data;
     data.loginRegisterErrorMessage = "";
@@ -782,8 +791,6 @@ class User3 extends Component<MyProps, MyState>{
     }
   } 
 
- 
-
   associatedAttributesList = () => {
     let data = this.state.data;
     let associatedAttributes = data.associateAttributesTest;
@@ -940,6 +947,7 @@ class User3 extends Component<MyProps, MyState>{
               data.pulledIdentity = false;
               data.issuerPublicKey = "";
               data.masterID = -1;
+              data.selectedProviderName = "";
               data.publicViewKey = "";
               data.identityAccounts = [];
               this.setState({data});
@@ -1095,14 +1103,44 @@ class User3 extends Component<MyProps, MyState>{
         if(type=='root'){
           rootAttributeId = key;
           return(
-            <div>
-              Root Attribute
+            <div 
+              style={{
+                display: 'flex', 
+                flexDirection: 'row'
+              }}
+            >
+              <div
+                style={{
+                  flex: 1, 
+                  textDecoration: 'underline', 
+                  textAlign: 'left', 
+                  paddingLeft: '10px'
+                }}
+              >
+                Root Attribute
+              </div>
+              <div style={{flex: 1}}/>
             </div>
           )
         }else{
           return(
-            <div>
-              Associated Attribute
+            <div 
+              style={{
+                display: 'flex', 
+                flexDirection: 'row'
+              }}
+            >
+              <div
+                style={{
+                  flex: 1, 
+                  textDecoration: 'underline',
+                  textAlign: 'left', 
+                  paddingLeft: '10px'
+                }}
+              >
+                Associated Attribute
+              </div>
+              <div style={{flex: 1}}/>
             </div>
           )
         }
@@ -1123,9 +1161,25 @@ class User3 extends Component<MyProps, MyState>{
               <div
                 style={{
                   color: 'white'
-                }}
+                }}  
               > 
-                Attribute Name - {schematic.attributeName}
+                <div 
+                  style={{
+                    display: 'flex', 
+                    flexDirection: 'row'
+                  }}
+                >
+                  <div
+                    style={{
+                      flex: 1, 
+                      textAlign: 'left', 
+                      paddingLeft: '10px'
+                    }}
+                  >
+                    Attribute Name - {schematic.attributeName}
+                  </div>
+                  <div style={{flex: 1}}/>
+                </div>
               </div>
               <div>
                 <div
@@ -1137,7 +1191,9 @@ class User3 extends Component<MyProps, MyState>{
                   <div
                     style={{
                       flex: 1, 
-                      color: "white"
+                      color: "white", 
+                      textAlign: 'left', 
+                      paddingLeft: '10px'
                     }}
                   >
                     Alias - {schematic.alias}
@@ -1303,9 +1359,10 @@ class User3 extends Component<MyProps, MyState>{
             onClick={async()=>{
               let data = this.state.data;
               data.inputSchematics = [];
-              await this.setState({data});
-              console.log("value of account and publicKey: ", account)
               data.issuerPublicKey = account.publicSpendKey;
+              data.selectedProviderName=account.accountInfo;
+              await this.setState({data});
+              console.log("value of account and publicKey: ", account);
               this.props.setIssuerNameFromUser(account.accountInfo);
               this.retrieveAttributesFromIdentity(account.accountId);
             }}
@@ -1369,6 +1426,19 @@ class User3 extends Component<MyProps, MyState>{
         <div
           className="pages"
         > 
+          <div
+            style={{
+              color: 'white', 
+              paddingTop: '10px', 
+              paddingBottom: '10px', 
+              width: '100%', 
+              textAlign: 'center', 
+              textDecoration: 'underline', 
+              fontSize: '1.5rem'
+            }}
+          >
+            {this.state.data.selectedProviderName}
+          </div>
           {this.schematicList()}
           {this.masterAccountList()}
         </div>

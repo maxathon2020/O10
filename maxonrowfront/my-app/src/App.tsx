@@ -7,6 +7,7 @@ import User3 from './pages/User3';
 import Service from './pages/Service';
 import Identity2 from './pages/identity2';
 import SignalRClass from './shared/signalR';
+import AccountsAPI, { AccountType } from './shared/accountsAPI';
 
 // import {ProviderOrSignerRequest} from './shared/initialize';
 import {
@@ -20,9 +21,11 @@ import {addressBook} from "./shared/addressBook";
 import ProviderOrSignerRequest from './shared/initialize';
 import { Provider } from 'mxw-sdk-js/dist/providers';
 import './css/main.css';
+import Axios from 'axios';
 
 
 class DataClass{
+  public baseApiUri = "http://localhost:5003";
   public addressBook = addressBook;
   private _wallet: string = "mxw127sn3dxpr6880tjlwfk7u007cway5my4lpjl4z";
   private _issuer: string = "mxw1k9sxz0h3yeh0uzmxet2rmsj7xe5zg54eq7vhla";
@@ -203,20 +206,24 @@ interface MyState {
 
 
 class App extends Component<MyProps, MyState>{
-  
+  accountsApi: AccountsAPI;
+
   constructor(props: MyProps){
     super(props);
     this.state = {
         data: new DataClass()
     }
+    this.accountsApi = new AccountsAPI(this.state.data.baseApiUri);
+
+    this.initializeAccounts();
   }
 
-  componentDidMount(){
-    let data = this.state.data;
-    data.signalR = new SignalRClass();
-    this.setState({data}, ()=>{
-      this.state.data.signalR.initializeHub();
-    });
+  initializeAccounts() {
+    this.accountsApi.getAll().then(r => {
+      r.forEach(a => {        
+        console.log(a);
+      });
+    })
   }
 
   // Request for attributes issuance
@@ -256,9 +263,20 @@ class App extends Component<MyProps, MyState>{
   //   this.state.data.signalR.RequestForIssuance(packageObj, username, password)
   // }
 
+  componentDidMount(){
+    let data = this.state.data;
+    let signalR = new SignalRClass();
+    signalR.initializeHub();
+    data.signalR = signalR;
+    this.setState({data});
+    this.initializeHandler();
+  }
+  
   initializeHandler = () => {
     let data = this.state.data;
+
     console.log('data.addressBook: ', data.addressBook);
+    
     data.addressBook.forEach(element => {
       if(element.Address==data.wallet){
         data.walletM = element.Mnemonic;
@@ -289,7 +307,9 @@ class App extends Component<MyProps, MyState>{
 
     data.Wallets = Wallets;
 
-    this.setState({data});
+    this.setState({data}, ()=>{
+      console.log("after initializeHandler and value of this.state.data: ", this.state.data);
+    });
   }
 
   addressesNFTKYC = () => {
@@ -511,7 +531,7 @@ class App extends Component<MyProps, MyState>{
       </div>
     );
   }
-
+  
   render(){
     return (
       <div
@@ -583,6 +603,24 @@ class App extends Component<MyProps, MyState>{
                       User
                     </Link>
                   </li>
+                  {/* <li 
+                    style={{
+                      display: 'inline', 
+                      background: "black", 
+                      color: "white", 
+                      marginRight: '20px',
+                      padding: '5px'
+                    }}
+                  >
+                    <Link to="/user3"
+                      style={{
+                        textDecoration: 'none',
+                        color: 'white'
+                      }}
+                    >
+                      User3
+                    </Link>
+                  </li> */}
                   <li 
                     style={{
                       display: 'inline', 
@@ -606,8 +644,8 @@ class App extends Component<MyProps, MyState>{
                       display: 'inline', 
                       background: "black", 
                       color: "white", 
-                      padding: '5px', 
-                      marginRight: '20px'
+                      marginRight: '20px',
+                      padding: '5px'
                     }}
                   >
                     <Link to="/identity"
@@ -637,7 +675,12 @@ class App extends Component<MyProps, MyState>{
             <Switch>
               <Route path="/nft">
                 {this.addressesNFTKYC()}
-                <NFT Wallets={this.state.data.Wallets}/>
+                <NFT 
+                  Wallets={this.state.data.Wallets} 
+                  fromIdentity={false}
+                  identityPayload={[]}
+                  identityCallback={()=>{}}
+                />
               </Route>
               <Route path="/kyc">
                 {this.addressesNFTKYC()}
@@ -663,6 +706,9 @@ class App extends Component<MyProps, MyState>{
               </Route>
               <Route path="/identity">
                 <Identity2
+                  addToGroup={(accountId: string)=>{
+                    this.addToGroup(accountId)
+                  }}
                   issuerNameFromUser={this.state.data.issuerNameFromUser}
                   signalR={this.state.data.signalR}
                   Wallets={this.state.data.Wallets}
@@ -674,6 +720,7 @@ class App extends Component<MyProps, MyState>{
       </div>
     );
   }  
+
 }
 
 export default App;

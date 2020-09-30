@@ -270,6 +270,7 @@ interface MyProps {
   Wallets: ProviderOrSignerRequest,
   signalR: SignalRClass, 
   issuerNameFromUser: string
+  addToGroup: (arg0: string)=>void
 };
 interface MyState {
   data: DataClass;
@@ -393,6 +394,7 @@ class Identity2 extends Component<MyProps, MyState>{
           data.loginRegisterErrorMessage = "user successfully logged in";
           data.loggedIn = true;
           this.setState({data});
+          this.props.addToGroup(accountId);
         })
         .catch(error=>{
           let data = this.state.data;
@@ -577,6 +579,7 @@ class Identity2 extends Component<MyProps, MyState>{
                 data.loginRegisterErrorMessage = "user has been registered and logged in";
                 data.loggedIn = true;
                 this.setState({data});
+                this.props.addToGroup(accountId.toString());
               })
               .catch(error=>{
                 data.loginRegisterErrorMessage = "username or password not authenticated";
@@ -603,8 +606,8 @@ class Identity2 extends Component<MyProps, MyState>{
 
   createPackage = () => {
     let data = this.state.data;
-    console.log("value of optionSelected: ", data.optionSelected);
-    console.log("value of attributes: ", data.attributes);
+    // console.log("value of optionSelected: ", data.optionSelected);
+    // console.log("value of attributes: ", data.attributes);
     let optionList = data.attributes.map((attribute,key)=>{
       return(
         <option
@@ -891,7 +894,7 @@ class Identity2 extends Component<MyProps, MyState>{
       });
     })
     .catch(error=>{
-      console.log('value of error: ', error);
+      console.log('value of error from StoreAttributes: ', error);
     })
   }
 
@@ -977,7 +980,7 @@ class Identity2 extends Component<MyProps, MyState>{
     catch(e){
         console.log("there was an error: ", e)
     }
-}
+  }
 
 
   identityProviderFlow = async() =>{
@@ -986,10 +989,10 @@ class Identity2 extends Component<MyProps, MyState>{
     // this.mintTokenHandler();
   }
 
-  mintNFTAttributes = () => {
+  NFTAttributesCreation = () => {
     let data = this.state.data;
-    console.log("value of wallets: ", this.props.Wallets);
-    console.log("value of data.identityPayload.length: ", data.identityPayload.length);
+    // console.log("value of wallets: ", this.props.Wallets);
+    // console.log("value of data.identityPayload.length: ", data.identityPayload.length);
     if(data.identityPayload.length>0){
       data.identityPayload.forEach(payload=>{
         data.symbol = payload.symbol;
@@ -1058,7 +1061,7 @@ class Identity2 extends Component<MyProps, MyState>{
           >
             {this.storeAttributesButton()}
           </div>     
-          {this.mintNFTAttributes()}
+          {this.NFTAttributesCreation()}
           {/* {this.showMintValues()} */}
         </div>
       </>

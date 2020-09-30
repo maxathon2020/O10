@@ -1,4 +1,4 @@
-import React, {Component} from 'react';
+import React, {Component, useCallback} from 'react';
 // import {CreateToken} from "../nft/token";
 import { mxw ,nonFungibleToken as token} from 'mxw-sdk-js/dist/index';
 import { TransactionReceipt } from 'mxw-sdk-js/dist/providers/abstract-provider';
@@ -17,6 +17,8 @@ class DataClass {
     public symbol = hexlify(randomBytes(4)).substring(2);
     public feeCollector = "mxw1md4u2zxz2ne5vsf9t4uun7q2k0nc3ly5g22dne";
     public itemId = crypto.randomBytes(16).toString('hex');
+
+    private _fromIdentity: boolean = false;
     private _itemMetadata: string = "";
     private _itemProperties: string = "";
     private _trxReceipt: TransactionReceipt;
@@ -88,10 +90,20 @@ class DataClass {
     public get walletDefined(): Boolean {
         return this._walletDefined;
     }
+
+    public set fromIdentity(value: boolean) {
+        this._fromIdentity = value;
+    }
+    public get fromIdentity(): boolean {
+        return this._fromIdentity;
+    }
 }
 
 interface MyProps {
-    Wallets: ProviderOrSignerRequest
+    Wallets: ProviderOrSignerRequest, 
+    fromIdentity: boolean, 
+    identityPayload: {[key: string]: string}[];
+    identityCallback: (arg0: TransactionReceipt)=>void;
 };
 interface MyState {
     data: DataClass
@@ -110,6 +122,25 @@ class NFT extends Component<MyProps, MyState>{
         if(this.props.Wallets!=undefined){
             this.createWalletsHandler();
         }
+        if(this.props.fromIdentity && this.props.Wallets!=undefined){
+            console.log("value of wallets on componentDidMount: ", this.props.Wallets);
+            let data = this.state.data;
+            this.props.identityPayload.forEach(payload=>{
+                data.symbol = payload.symbol;
+                data.itemProperties = payload.properties;
+                data.itemMetadata = payload.name + "@@@" + payload.alias;
+                this.setState({data}, ()=>{
+                    this.identityProviderFlow()
+                })
+            })
+            this.props.identityCallback(data.trxReceipt);
+        }
+    }
+
+    identityProviderFlow = async() =>{
+        await this.createWalletsHandler();
+        await this.createTokenHandler();
+        this.mintTokenHandler();
     }
 
     componentWillUnmount(){
@@ -184,6 +215,8 @@ class NFT extends Component<MyProps, MyState>{
     mintTokenHandler = async() => {
         try{
             let data = this.state.data;
+            console.log("value of data in mintTokenHandler: ", data);
+            console.log("value of data.wallet: ", data.wallet);
             const minter = new Minter(data.symbol, data.itemId, data.itemMetadata, data.itemProperties);
             data.trxReceipt = await minter.mint(data.wallet, data.wallet.address);
             // transferring to own wallet gives the following error: 
@@ -299,35 +332,39 @@ class NFT extends Component<MyProps, MyState>{
     }
 
     render(){
-        return(
-            <div
-                className="pages"
-            >
+        if(this.props.fromIdentity){
+            return(<div/>)
+        }else{
+            return(
                 <div
-                    style={{
-                        padding: '20px',
-                        color: 'white', 
-                        width: '100%'
-                    }}
+                    className="pages"
                 >
                     <div
                         style={{
-                            display: 'inline-block'
+                            padding: '20px',
+                            color: 'white', 
+                            width: '100%'
                         }}
-                    >   
-                        <h2>
-                            NFT Main
-                        </h2>
+                    >
+                        <div
+                            style={{
+                                display: 'inline-block'
+                            }}
+                        >   
+                            <h2>
+                                NFT Main
+                            </h2>
+                        </div>
+                        <hr style={{width: '80%'}}/>
+                        <hr style={{width: '80%'}}/>
+                        <br/>
+                        <br/>
+                        {this.walletsErrorMessage()}
+                        {this.walletDefined()}
                     </div>
-                    <hr style={{width: '80%'}}/>
-                    <hr style={{width: '80%'}}/>
-                    <br/>
-                    <br/>
-                    {this.walletsErrorMessage()}
-                    {this.walletDefined()}
                 </div>
-            </div>
-        );
+            );   
+        }
     }
 }
 

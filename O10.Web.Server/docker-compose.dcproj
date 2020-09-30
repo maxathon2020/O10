@@ -5,7 +5,7 @@
     <DockerTargetOS>Linux</DockerTargetOS>
     <ProjectGuid>37859ff2-572a-4725-a1df-2b99eff3c697</ProjectGuid>
     <DockerLaunchAction>LaunchBrowser</DockerLaunchAction>
-    <DockerServiceUrl>{Scheme}://localhost:{ServicePort}/weatherforecast</DockerServiceUrl>
+    <DockerServiceUrl>{Scheme}://localhost:{ServicePort}/api/diagnostic</DockerServiceUrl>
     <DockerServiceName>o10.web.server</DockerServiceName>
   </PropertyGroup>
   <ItemGroup>

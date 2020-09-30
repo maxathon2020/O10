@@ -76,13 +76,6 @@ namespace O10.Web.Server.Services
                                     {
                                         SchemeName = t.Result,
                                         Source = packet.Signer.ToString(),
-                                        AssetId = assetId.ToHexString(),
-                                        OriginalBlindingFactor = blindingFactor.ToHexString(),
-                                        OriginalCommitment = packet.TransferredAsset.AssetCommitment.ToHexString(),
-                                        LastBlindingFactor = blindingFactor.ToHexString(),
-                                        LastCommitment = packet.TransferredAsset.AssetCommitment.ToHexString(),
-                                        LastTransactionKey = packet.TransactionPublicKey.ToHexString(),
-                                        LastDestinationKey = packet.DestinationKey.ToHexString(),
                                         Content = userRootAttribute.Content,
                                         Validated = true,
                                         IsOverriden = false
@@ -234,15 +227,7 @@ namespace O10.Web.Server.Services
             {
                 SchemeName = userAttribute.SchemeName,
                 Source = userAttribute.Source,
-                AssetId = userAttribute.AssetId.ToHexString(),
-                OriginalCommitment = userAttribute.OriginalCommitment.ToHexString(),
-                OriginatingCommitment = userAttribute.IssuanceCommitment.ToHexString(),
-                LastCommitment = userAttribute.LastCommitment.ToHexString(),
                 Content = userAttribute.Content,
-                LastBlindingFactor = userAttribute.LastBlindingFactor.ToHexString(),
-                LastDestinationKey = userAttribute.LastDestinationKey.ToHexString(),
-                LastTransactionKey = userAttribute.LastTransactionKey.ToHexString(),
-                OriginalBlindingFactor = userAttribute.OriginalBlindingFactor.ToHexString(),
                 Validated = false,
                 IsOverriden = true
             };

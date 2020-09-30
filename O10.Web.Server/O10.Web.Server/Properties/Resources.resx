@@ -117,6 +117,9 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
+  <data name="ERR_ACCOUNT_AUTHENTICATION_FAILED" xml:space="preserve">
+    <value>Authentication failed for the account with accountId '{0}'</value>
+  </data>
   <data name="ERR_ACCOUNT_NOT_FOUND" xml:space="preserve">
     <value>Account with id {0} not found</value>
   </data>
@@ -141,6 +144,9 @@
   <data name="ERR_COMMITMENT_ELIGIBILITY_VERIFICATION_FAILED" xml:space="preserve">
     <value>Commitment eligibility verification failed</value>
   </data>
+  <data name="ERR_EXECUTIONCONTEXT_NOTSTARTED" xml:space="preserve">
+    <value>Execution context not started yet for the account with accountId '{0}'</value>
+  </data>
   <data name="ERR_FAILED_TRANSFER_ROOT_ATTR" xml:space="preserve">
     <value>Failed to transfer Root Attribute</value>
   </data>
@@ -150,11 +156,17 @@
   <data name="ERR_INHERENCE_REGISTRATION_PROOFS_INCORRECT" xml:space="preserve">
     <value>Inherence registration proofs are incorrect</value>
   </data>
+  <data name="ERR_MANDATORY_ATTRIBUTE_NOT_PROVIDED" xml:space="preserve">
+    <value>A value for the mandatory attribute '{0}' was not provided</value>
+  </data>
   <data name="ERR_NO_ROOT_SCHEME_DEFINED" xml:space="preserve">
     <value>No Root Attribute Scheme defined for the issuer '{0}'.</value>
   </data>
   <data name="ERR_NO_VALIDATION_PROOFS" xml:space="preserve">
     <value>Validation proofs were not provided</value>
+  </data>
+  <data name="ERR_NO_VALUE_FOR_ATTR" xml:space="preserve">
+    <value>No value was provided for the attribute having AttributeName '{0}'</value>
   </data>
   <data name="ERR_PROTECTION_ATTR_VERIFICATION_FAILED" xml:space="preserve">
     <value>Protection Attribute verification failed</value>
@@ -167,6 +179,9 @@
   </data>
   <data name="ERR_SP_AUTHENTICATION_FAILED" xml:space="preserve">
     <value>Authentication Proofs were incorrect</value>
+  </data>
+  <data name="ERR_UNEXPECTED_ACCOUNT_TYPE" xml:space="preserve">
+    <value>Received account with accountId '{0}' with unexpected type '{0}'</value>
   </data>
   <data name="ERR_VALIDATION_PROOFS_NOT_COMPLETE" xml:space="preserve">
     <value>Validation proofs were not complete for {0}</value>
