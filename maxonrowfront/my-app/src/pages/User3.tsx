@@ -7,10 +7,20 @@ import { queryAllByAttribute } from '@testing-library/react';
 import * as crypto from "crypto";
 
 class DataClass {
-  private _publicSpendKey: string;
+  private _publicSpendKey: string = "";
   private _inputSchematics: {[key: string]: any}[] = [];
-  private _issuerPublicKey: string;
+  private _issuerPublicKey: string = "";
   private _pulledIdentity: boolean;
+
+  private _masterID: number = -1;
+
+  public get masterID():number{
+    return this._masterID;
+  }
+
+  public set masterID(value:number){
+    this._masterID = value;
+  }
 
   public set publicSpendKey(value: string){
     this._publicSpendKey = value;
@@ -340,8 +350,9 @@ interface Schematics{
 }
 
 interface MyProps {
-  requestForIssuance: (arg0: string, arg1: {[key: string]: any}[])=>void,
-  addToGroup: (arg0: string)=>void
+  // requestForIssuance: (arg0: string, arg1: {[key: string]: any}[], arg2: string, arg3: string)=>void,
+  addToGroup: (arg0: string)=>void, 
+  setIssuerNameFromUser: (arg0:string)=>void
 };
 
 interface MyState {
@@ -459,8 +470,11 @@ class User3 extends Component<MyProps, MyState>{
     }
   }
 
+  //to do
+  getRootAttributes(){}
+
   componentWillMount(){
-    this.getRootAtributes();
+    this.getRootAttributes();
   }
 
   componentDidMount(){
@@ -473,98 +487,8 @@ class User3 extends Component<MyProps, MyState>{
     // console.log(mystr);
   }
 
-
-
-  componentDidUpdate(prevState:any, prevProps:any){
-    // if(this.state.data!=undefined && prevState.data!=undefined){
-    //   console.log("value of this.state.data: ", this.state.data);
-    //   if(this.state.data.accountId!=null && prevState.data.accountId==null){
-    //     console.log("accountId has changed in state");
-    //   }
-    // }
-    //   if(prevState!=this.state){
-  //     if(this.state.data.accountId!=null && prevState.data.accountId==null){
-  //       // {
-  //       //   “rootAttribute”: {
-  //       //     “attributeName”: string,
-  //       //     “originatingCommitment”: 64-chars hex-string,
-  //       //     “assetCommitment”: 64-chars hex-string,
-  //       //     “surjectionProof”: 192-chars hex-string
-  //       //   },
-  //       //   “associatedAttributes”: [
-  //       //     {
-  //       //       “attributeName”: string,
-  //       //       “assetCommitment”: 64-chars hex-string,
-  //       //       “bindingToRootCommitment”: 64-chars hex-string
-  //       //     }
-  //       //   ]
-  //       // }
-  
-  //       // let packageObj = {
-  //       //   rootAttribute: {
-  //       //     attributeName: "teststring",
-  //       //     originatingCommitment: "teststring",
-  //       //     assetCommitment: "teststring",
-  //       //     surjectionProof: "teststring"
-  //       //   },
-  //       //   associatedAttributes: [
-  //       //     {
-  //       //       attributeName: "teststring",
-  //       //       assetCommitment: "teststring",
-  //       //       bindingToRootCommitment: "teststring"
-  //       //     }, 
-  //       //     {
-  //       //       attributeName: "teststring",
-  //       //       assetCommitment: "teststring",
-  //       //       bindingToRootCommitment: "teststring"
-  //       //     }
-  //       //   ]
-  //       // }  
-  //       // let packageObj = [];
-  //       let packageObj:{[key: string]: any}[] = [];    
-  //       this.props.clientIdHandler(this.state.data.accountId, packageObj);
-  //     }
-  //   }
-  }
-
-  requestForIssuance = () => {
-    let packageObj:{[key: string]: any}[] = [];    
-    this.props.requestForIssuance(this.state.data.accountId, packageObj);
-  }
-
   addToGroup = () => {
     this.props.addToGroup(this.state.data.accountId);
-  }
-
-  getRootAtributes = () => { 
-
-    // attributes are currently not organized by 
-    // root and associated attributes - using a test sample instead.
-
-    // axios.get<SchemeItems[]>("http://localhost:5003/api/SchemeResolution/SchemeItems")
-    // .then((resolve)=>{
-    //   console.log("value of resolution: ", resolve);
-    //   console.log("typeof resolve: ", typeof resolve);
-    //   console.log("typeof this.state.data.rootAttributes; ", typeof this.state.data.rootAttributes)
-    //   let rootAtributes: {[key: string]:string}[] = [];
-    //   resolve.data.forEach(item=>{
-    //     console.log("value of item: ", item);
-    //     let rootAttribute = {
-    //       name: item.name,
-    //       description: item.description, 
-    //       valueType: item.valueType,
-    //       allowMultiple: item.allowMultiple
-    //     }
-    //     rootAtributes.push(rootAttribute);
-    //   })
-    //   let data = this.state.data;
-    //   data.rootAttributes = rootAtributes;
-    //   this.setState({data});
-    // })
-    // .catch(error=>{
-    //   console.log("value of error: ", error);
-    // })
-    
   }
 
   //USE API HERE
@@ -1012,7 +936,10 @@ class User3 extends Component<MyProps, MyState>{
               data.accountId = null;
               data.username = "";
               data.password = "";
+              data.publicSpendKey = "";
               data.pulledIdentity = false;
+              data.issuerPublicKey = "";
+              data.masterID = -1;
               data.publicViewKey = "";
               data.identityAccounts = [];
               this.setState({data});
@@ -1122,6 +1049,8 @@ class User3 extends Component<MyProps, MyState>{
   //   ]
   // }
 
+
+
   schematicList = () => {
     let data = this.state.data;
     let rootAttributeId: number = -1;
@@ -1136,19 +1065,28 @@ class User3 extends Component<MyProps, MyState>{
           attributeValues = {...attributeValues, ...attributeObj}
         }
       })
-      packageObj = {
-        issuer: data.issuerPublicKey, 
-        attributeValues
+      if(this.state.data.masterID!=-1){
+        packageObj = {
+          masterRootAttributeId: this.state.data.masterID,
+          issuer: data.issuerPublicKey, 
+          attributeValues
+        }
+      }else{
+        packageObj = {
+          issuer: data.issuerPublicKey, 
+          attributeValues
+        }
       }
       console.log("value of packageObj: ", packageObj);
-        axios.post("http://localhost:5003/api/User/AttributesIssuance?accountId="+data.accountId.toString(), packageObj)
-        .then(resolve=>{
-          console.log('value of resolve: ', resolve);
-        })
-        .catch(error=>{
-          console.log("value of error: ", error);
-        })
-      this.requestForIssuance();
+      console.log("data.accountId.toString(): ", data.accountId.toString())
+      axios.post("http://localhost:5003/api/User/AttributesIssuance?accountId="+data.accountId.toString(), packageObj)
+      .then(resolve=>{
+        console.log('value of resolve: ', resolve);
+      })
+      .catch(error=>{
+        console.log("value of error: ", error);
+      })
+      // this.requestForIssuance();
     }
 
     if(data.inputSchematics.length>0){
@@ -1280,6 +1218,61 @@ class User3 extends Component<MyProps, MyState>{
     })
   }
 
+  masterAccountList = () => {
+    let data = this.state.data;
+    if(data.identityAccounts.length>0 && data.issuerPublicKey!=""){
+      let masterList = data.identityAccounts.map((account,key)=>{
+        if(data.issuerPublicKey!=account.publicSpendKey){
+          return(
+            <div
+              key={key}
+              className="button"
+              style={{
+                marginTop: '5px', 
+                background: this.state.data.masterID==account.accountId?"green":"black"
+              }}
+              onClick={()=>{
+                let data = this.state.data;
+                if(data.masterID==account.accountId){
+                  data.masterID = -1;
+                }else{
+                  data.masterID = account.accountId;
+                }
+                this.setState({data});
+              }}
+            >
+              {account.accountInfo}
+            </div>
+          )
+        }
+      })
+      return(
+        <div
+          style={{
+            textAlign: 'center', 
+            background: 'blue',
+            maxHeight: '50vh', 
+            overflow: 'auto', 
+            marginTop: '5px', 
+            paddingTop: '5px', 
+            paddingBottom: '5px'
+          }}
+        >
+          <div
+            style={{
+              marginBottom: "5px",
+              marginTop: '5px', 
+              color: "white"
+            }}
+          >
+            Here is the list of available master roots
+          </div>
+          {masterList}
+        </div>
+      ); 
+    }
+  }
+
   availableIdentityProviders = () => {
     let data = this.state.data;
     // console.log("**** in availableIdentityProviders and data: ", this.state.data);
@@ -1313,6 +1306,7 @@ class User3 extends Component<MyProps, MyState>{
               await this.setState({data});
               console.log("value of account and publicKey: ", account)
               data.issuerPublicKey = account.publicSpendKey;
+              this.props.setIssuerNameFromUser(account.accountInfo);
               this.retrieveAttributesFromIdentity(account.accountId);
             }}
           >
@@ -1376,6 +1370,7 @@ class User3 extends Component<MyProps, MyState>{
           className="pages"
         > 
           {this.schematicList()}
+          {this.masterAccountList()}
         </div>
       </>
     );

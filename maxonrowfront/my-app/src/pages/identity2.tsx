@@ -12,6 +12,8 @@ import Approver from '../nft/approver';
 import Util from "../nft/util";
 import Minter from '../nft/minter';
 import * as crypto from "crypto";
+import SignalRClass from '../shared/signalR';
+
 
 class DataClass{
   private _loginRegisterErrorMessage = "";
@@ -252,10 +254,22 @@ class DataClass{
       return this._fromIdentity;
   }
 
+  private _signalRreturn: {[key: string]:any}[] = [];
+
+  public get signalRreturn():{[key: string]:any}[]{
+    return this._signalRreturn;
+  }
+
+  public set signalRreturn(value: {[key: string]:any}[]){
+    this._signalRreturn = value;
+  }
+
 }
 
 interface MyProps {
-  Wallets: ProviderOrSignerRequest, 
+  Wallets: ProviderOrSignerRequest,
+  signalR: SignalRClass, 
+  issuerNameFromUser: string
 };
 interface MyState {
   data: DataClass;
@@ -313,7 +327,7 @@ class Identity2 extends Component<MyProps, MyState>{
 
   componentWillMount(){
     let data = this.state.data;
-    // http://localhost:5003/api/SchemeResolution/SchemeItems
+    // http://localhost:5003/api/SchemeResolution/
     axios.get<SchemeItems[]>("http://localhost:5003/api/SchemeResolution/SchemeItems")
     .then((resolve)=>{
       data.attributes = resolve.data;
@@ -328,6 +342,14 @@ class Identity2 extends Component<MyProps, MyState>{
 
   componentDidMount(){
     console.log("value of Wallets on ComponentDidMount: ", this.props.Wallets);
+    setInterval(()=>{
+      let signalRreturn = this.props.signalR.bubbleAttributes()
+      if(signalRreturn!=[]){
+        let data = this.state.data;
+        data.signalRreturn = signalRreturn;
+        this.setState({data})
+      }
+    }, 250)
   }
 
   // http://localhost:5003/api/SchemeResolution/SchemeItems
@@ -960,9 +982,9 @@ class Identity2 extends Component<MyProps, MyState>{
 
   identityProviderFlow = async() =>{
     await this.createWalletsHandler();
-    await this.createTokenHandler();
-    this.mintTokenHandler();
-}
+    this.createTokenHandler();
+    // this.mintTokenHandler();
+  }
 
   mintNFTAttributes = () => {
     let data = this.state.data;

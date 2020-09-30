@@ -29,6 +29,16 @@ class DataClass{
   private _provider: string = "mxw1f8r0k5p7s85kv7jatwvmpartyy2j0s20y0p0yk";
   private _middleware: string = "mxw1md4u2zxz2ne5vsf9t4uun7q2k0nc3ly5g22dne";
 
+  private _issuerNameFromUser:string='';
+  
+  public get issuerNameFromUser():string{
+    return this._issuerNameFromUser;
+  }
+
+  public set issuerNameFromUser(value: string){
+    this._issuerNameFromUser = value;
+  }
+
   private _signalR: SignalRClass
 
   public get signalR():SignalRClass{
@@ -242,9 +252,9 @@ class App extends Component<MyProps, MyState>{
     console.log("&&&&&&&&&&&&&ADDTOGROUP&&&&&&&&&&&&&")
   }
 
-  requestForIssuance = (clientId: string, packageObj: {[key: string]: any}[]) => {
-    this.state.data.signalR.RequestForIssuance()
-  }
+  // requestForIssuance = (clientId: string, packageObj: {[key: string]: any}[], username: string, password: string) => {
+  //   this.state.data.signalR.RequestForIssuance(packageObj, username, password)
+  // }
 
   initializeHandler = () => {
     let data = this.state.data;
@@ -635,12 +645,17 @@ class App extends Component<MyProps, MyState>{
               </Route>
               <Route path="/user">
                 <User3
+                  setIssuerNameFromUser={(issuerName: string)=>{
+                    let data = this.state.data;
+                    data.issuerNameFromUser=issuerName;
+                    this.setState({data})
+                  }}
                   addToGroup={(accountId: string)=>{
                     this.addToGroup(accountId)
                   }}
-                  requestForIssuance={(accountId:string, packageObj:{[key: string]:any}[])=>{
-                    this.requestForIssuance(accountId, packageObj)
-                  }}
+                  // requestForIssuance={(accountId:string, packageObj:{[key: string]:any}[], username: string, password: string)=>{
+                  //   this.requestForIssuance(accountId, packageObj, username, password)
+                  // }}
                 />
               </Route>
               <Route path="/service">
@@ -648,6 +663,8 @@ class App extends Component<MyProps, MyState>{
               </Route>
               <Route path="/identity">
                 <Identity2
+                  issuerNameFromUser={this.state.data.issuerNameFromUser}
+                  signalR={this.state.data.signalR}
                   Wallets={this.state.data.Wallets}
                 />
               </Route>

@@ -1,4 +1,9 @@
 import * as signalR from '@microsoft/signalr';
+// import sha256 from 'js-sha256';
+// import sha256 from 'fast-sha256';
+// import aesjs from 'aes-js';
+import {SHA256} from 'crypto-ts';
+
 
 export default class SignalRClass{
 
@@ -6,6 +11,44 @@ export default class SignalRClass{
   private _accountId: string;
   private _registrations: {[key: string]:any}[]
   private _spAttributes: {[key: string]:any}[]
+
+  // private _symbol: string = "";
+  // private _property: string = "";
+  // private _itemID: string = "";
+
+  // public get symbol():string{
+  //   return this._symbol;
+  // }
+
+  // public set symbol(value: string){
+  //   this._symbol = value;
+  // }
+  
+  // public get property():string{
+  //   return this._property;
+  // }
+
+  // public set property(value: string){
+  //   this._property = value;
+  // }
+  
+  // public get itemID():string{
+  //   return this._itemID;
+  // }
+
+  // public set itemID(value: string){
+  //   this._itemID = value;
+  // }
+
+  private _signalRreturn: {[key: string]:any}[] = [];
+
+  public get signalRreturn():{[key: string]:any}[]{
+    return this._signalRreturn;
+  }
+
+  public set signalRreturn(value: {[key: string]:any}[]){
+    this._signalRreturn = value;
+  }
 
   public get spAttributes(): {[key: string]:any}[]{
     return this._spAttributes;
@@ -32,6 +75,7 @@ export default class SignalRClass{
   }
 
   public initializeHub(){
+    console.log("initializingHub")
     this.hubConnection = new signalR.HubConnectionBuilder()
     .withUrl("http://localhost:5003/identitiesHub")
     .configureLogging(signalR.LogLevel.Information)
@@ -55,8 +99,12 @@ export default class SignalRClass{
 		this.hubConnection.on("PushAttribute", (i) => {
 			this.spAttributes.push(i);
     });
-    
-		// this.hubConnection.on("PushEmployeeUpdate", (i) => {
+    this.hubConnection.on("RequestForIssuance", (i) => {
+      console.info("RequestForIssuance");
+			console.info(i);
+		});
+
+    // this.hubConnection.on("PushEmployeeUpdate", (i) => {
 		// 	for (let employee of this.employees) {
 		// 		if (employee.assetId === i.assetId) {
 		// 			employee.registrationCommitment = i.registrationCommitment;
@@ -66,28 +114,85 @@ export default class SignalRClass{
   
   }
 
-  public AddToGroup(){
-    console.log("inside AddToGroup")
-    this.hubConnection.invoke("AddToGroup", this.accountId)
+  public bubbleAttributes(){
+    return this.signalRreturn
   }
 
-  public RequestForIssuance(){
-    let packageObjTest = {
-      rootAttribute: {
-        attributeName: "test", 
-        originatingCommitment:"5f3ae2b02affea74c2ee6e6d53a2d6ded319c9905dea7f0b4bb9273819c76b65", 
-        assetCommitment: "4e2c16a6499dafab98da9e5a2c3d7ff418aead18fec0e074e61f1cdfa2c84a9c", 
-        surjectionProof: "c3d631ca7bb6cdeaa9e167043367ab8e3c7dd792c2959b1dba46f61fa2c583161983d919802416140eebf9306a8f4a30bd417aff47b0ffe58630382ebc970c159a6051d8608d39f37cd97172c40544c8115a581964f34f42942138f62f0948b9"
-      }, 
-      associatedAttributes: [
-        {
-          attributeName: "test", 
-          assetCommitment: "204b9505556c687e3d8a491d1850054ac848896303fafaf18af2d3e933f97d88", 
-          bindingToRootCommitment: "b4bbe17841ria25c144209eda794599eb632491842d5afb7f0eabcd9cd0bcecc8"
-        }
-      ]
-    }
-    this.hubConnection.invoke("RequestForIssuance", packageObjTest);
+ 
+ 
+  public AddToGroup(){
+    console.log("inside AddToGroup")
+    this.hubConnection
+      .invoke("AddToGroup", this.accountId)
+      .then(r => {},e => {console.error(e)});
   }
+
+  // public RequestForIssuance(inputSchematics: {[key: string]:any}[], username: string, password: string){
+  //   console.log("value of inputSchematics in requestforissuance: ", inputSchematics);
+  //   // let requestPackage = []
+  //   // 0:
+  //   //   alias: "testing"
+  //   //   attributeName: "testing"
+  //   //   input: "sfsdfsdfsdf"
+  //   //   type: "root"
+  //   //   __proto__: Object
+  //   // 1:
+  //   //   alias: "Password"
+  //   //   attributeName: "Password"
+  //   //   input: ""
+  //   //   type: "associated"
+    
+
+  //   // const hexGenerator = () => {
+  //   //   var usernamepassword = username + password;
+  //   //   usernamepassword.forEach()
+  //   // }
+  //   // var hash = sha256.create();
+  //   // hash.update('Message to hash');
+  //   // hash.hex();
+
+    
+  //   // const encryptedMessage = SHA256('message').toString();
+
+  //   // console.log("value of encryptedMessage: ", encryptedMessage);
+
+  //   // let pushObj = {}
+  //   // let usernamepasswordsha = sha256(username+password)
+  //   // let dateusernamepasswordsha = sha256(Date.now()+username+password);
+  //   // inputSchematics.forEach(input=>{
+  //   //   if(input.type=='root'){
+  //   //     let rootAttribute = {
+  //   //       rootAttribute: {
+  //   //         attributeName: input.attributeName,
+  //   //         originatingCommitment: usernamepasswordsha,
+  //   //         assetCommitment: dateusernamepasswordsha,
+  //   //         surjectionProof:  aesjs.utils.hex.toBytes(usernamepasswordsha+dateusernamepasswordsha)
+  //   //       }
+  //   //     }
+  //   //     pushObj = {...rootAttribute, ...pushObj}
+  //   //   }else{
+
+  //   //   }
+  //   // })
+
+  //   // console.log("value of pushObj: ", pushObj);
+
+  //   // let packageObjTest = {
+  //   //   rootAttribute: {
+  //   //     attributeName: "test", 
+  //   //     originatingCommitment:"5f3ae2b02affea74c2ee6e6d53a2d6ded319c9905dea7f0b4bb9273819c76b65", 
+  //   //     assetCommitment: "4e2c16a6499dafab98da9e5a2c3d7ff418aead18fec0e074e61f1cdfa2c84a9c", 
+  //   //     surjectionProof: "c3d631ca7bb6cdeaa9e167043367ab8e3c7dd792c2959b1dba46f61fa2c583161983d919802416140eebf9306a8f4a30bd417aff47b0ffe58630382ebc970c159a6051d8608d39f37cd97172c40544c8115a581964f34f42942138f62f0948b9"
+  //   //   }, 
+  //   //   associatedAttributes: [
+  //   //     {
+  //   //       attributeName: "test", 
+  //   //       assetCommitment: "204b9505556c687e3d8a491d1850054ac848896303fafaf18af2d3e933f97d88", 
+  //   //       bindingToRootCommitment: "b4bbe17841ria25c144209eda794599eb632491842d5afb7f0eabcd9cd0bcecc8"
+  //   //     }
+  //   //   ]
+  //   // }
+  //   // this.hubConnection.invoke("RequestForIssuance", ()=>packageObjTest);
+  // }
 
 }
