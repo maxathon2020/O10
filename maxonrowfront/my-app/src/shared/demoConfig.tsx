@@ -1,9 +1,11 @@
+import { mxw } from "mxw-sdk-js";
 import { AccountDTO } from "./accountsAPI";
 
 export class DemoAccount {
     accountType: number;
     accountName: string;
-    account: AccountDTO 
+    account: AccountDTO;
+    wallet: mxw.Wallet;
 }
 
 export class DemoIdpAccount extends DemoAccount {
@@ -29,6 +31,13 @@ export class RequiredValidation {
 export class DemoConfig {
     idpAccounts: DemoIdpAccount[];
     spAccounts: DemoSpAccount[];
+    mwxWalletMnes: MwxWalletMnes;
+}
+
+export class MwxWalletMnes {
+    issuerMne: string;
+    providerMne: string;
+    middlewareMne: string;
 }
 
 export const demoConfig: DemoConfig = {
@@ -56,7 +65,8 @@ export const demoConfig: DemoConfig = {
                     schemeName: "LastName"
                 }
             ],
-            account: null
+            account: null,
+            wallet: null
         }
     ],
     spAccounts: [
@@ -64,7 +74,13 @@ export const demoConfig: DemoConfig = {
             accountName: "Municipality",
             accountType: 2,
             account: null,
-            validations: []
+            validations: [],
+            wallet: null
         }
-    ]
+    ],
+    mwxWalletMnes: {
+        providerMne: "foot increase such wave plunge athlete gentle figure hub reunion transfer marriage rude license champion monkey fan balcony position birth onion circle hint cool",
+        middlewareMne: "belt world purchase stick spare one music suggest dentist kit globe save snack sauce liquid face undo select ethics choose august rhythm cycle crucial",
+        issuerMne: "brisk barrel dose panther slice album family math cup cute awesome mechanic pattern rack erupt enforce alcohol wolf boil autumn family avoid brother legal"
+    }
 }

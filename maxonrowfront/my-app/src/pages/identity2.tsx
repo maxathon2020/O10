@@ -961,9 +961,9 @@ class Identity2 extends Component<MyProps, MyState>{
 
 
   identityProviderFlow = async() =>{
-    await this.createWalletsHandler();
-    await this.createTokenHandler();
-    this.mintTokenHandler();
+    //await this.createWalletsHandler();
+    //await this.createTokenHandler();
+    //this.mintTokenHandler();
 }
 
   mintNFTAttributes = () => {

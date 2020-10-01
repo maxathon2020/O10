@@ -34,6 +34,32 @@ export default class AccountsAPI{
 
         return accounts;
     }
+
+    async register(accountType: number, accountInfo: string, password: string) {
+        return await Axios.post<AccountDTO>(this.baseUri + "/api/accounts/register", {accountType, accountInfo, password});
+    }
+
+    async authenticate(accountId: number, password: string) {
+        return await Axios.post<AccountDTO>(this.baseUri + "/api/accounts/authenticate", {accountId, password});
+    }
+
+    async storeMnemonic(accountId: number, mne: string) {
+        return await Axios.post<Map<string, string>>(this.baseUri + "/api/accounts/KeyValues?accountId=" + accountId, { mxwMnemonic: mne });
+    }
+
+    async getMnemonic(accountId: number) {
+        var mne: string = null;
+        await Axios.get<any>(this.baseUri + "/api/accounts/KeyValues?accountId=" + accountId).then(
+            kvs => {
+                mne = Reflect.get(kvs.data, "mxwMnemonic");
+            },
+            e => {
+                console.error("Failed to obtain mnemonic for account with id " + accountId + ": " + e);
+            }
+        )
+
+        return mne;
+    }
 }
 
 export enum AccountType {

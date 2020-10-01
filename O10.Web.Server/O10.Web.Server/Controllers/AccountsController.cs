@@ -76,7 +76,10 @@ namespace O10.Web.Server.Controllers
             {
                 _executionContextManager.InitializeUtxoExecutionServices(accountDescriptor.AccountId, accountDescriptor.SecretSpendKey, accountDescriptor.SecretViewKey, accountDescriptor.PwdHash);
                 var persistency = _executionContextManager.ResolveUtxoExecutionServices(accountDto.AccountId);
-                persistency.BindingKeySource.SetResult(ConfidentialAssetsHelper.PasswordHash(accountDto.Password));
+                if (!persistency.BindingKeySource.Task.IsCompleted)
+                {
+                    persistency.BindingKeySource.SetResult(ConfidentialAssetsHelper.PasswordHash(accountDto.Password));
+                }
             }
             else
             {

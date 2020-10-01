@@ -7,7 +7,9 @@ import User3 from './pages/User3';
 import Service from './pages/Service';
 import Identity2 from './pages/identity2';
 import SignalRClass from './shared/signalR';
-import AccountsAPI, { AccountType } from './shared/accountsAPI';
+import AccountsAPI from './shared/accountsAPI';
+import SchemeResolutionAPI, { NewAttributeDefinition } from './shared/schemeResolutionAPI';
+import { DemoAccount, demoConfig, DemoIdpAccount } from "./shared/demoConfig";
 
 // import {ProviderOrSignerRequest} from './shared/initialize';
 import {
@@ -31,6 +33,21 @@ class DataClass{
   private _issuer: string = "mxw1k9sxz0h3yeh0uzmxet2rmsj7xe5zg54eq7vhla";
   private _provider: string = "mxw1f8r0k5p7s85kv7jatwvmpartyy2j0s20y0p0yk";
   private _middleware: string = "mxw1md4u2zxz2ne5vsf9t4uun7q2k0nc3ly5g22dne";
+
+  private _idpAccounts: DemoAccount[] = new Array();
+  public get idpAccounts(): DemoAccount[] {
+    return this._idpAccounts;
+  }
+  public set idpAccounts(value: DemoAccount[]) {
+    this._idpAccounts = value;
+  }
+  private _spAccounts: DemoAccount[] = new Array();
+  public get spAccounts(): DemoAccount[] {
+    return this._spAccounts;
+  }
+  public set spAccounts(value: DemoAccount[]) {
+    this._spAccounts = value;
+  }
 
   private _signalR: SignalRClass
 
@@ -197,6 +214,7 @@ interface MyState {
 
 class App extends Component<MyProps, MyState>{
   accountsApi: AccountsAPI;
+  schemeResolutionAPI: SchemeResolutionAPI;
 
   constructor(props: MyProps){
     super(props);
@@ -204,22 +222,116 @@ class App extends Component<MyProps, MyState>{
         data: new DataClass()
     }
     this.accountsApi = new AccountsAPI(this.state.data.baseApiUri);
-
-    this.initializeAccounts();
+    this.schemeResolutionAPI = new SchemeResolutionAPI(this.state.data.baseApiUri);
   }
 
   componentDidMount(){
     let signalR = new SignalRClass();
     signalR.initializeHub();
     this.state.data.signalR = signalR;
+    this.initializeHandler();
+    this.initializeAccounts();
   }
 
   initializeAccounts() {
-    this.accountsApi.getAll().then(r => {
+    console.info("Starting demo IdP accounts initialization");
+    this.accountsApi.get(1).then(r => {
       r.forEach(a => {        
-        console.log(a);
+        var demoIdpAccount = demoConfig.idpAccounts.find(v => v.accountName == a.accountInfo);
+        if(demoIdpAccount) {
+          demoIdpAccount.account = a;
+        }
+      });
+
+      demoConfig.idpAccounts.forEach(async d => {
+        console.info("Initializing demo account " + d.accountName);
+        if(!d.account) {
+          console.info("Need to register O10 account and whitelist MXW wallet");
+          this.accountsApi.register(d.accountType, d.accountName, "qqq").then(
+            a => {
+              d.account = a
+              this.whitelistWallet(null).then(
+                w => {
+                  this.accountsApi.storeMnemonic(d.account.accountId, w.mnemonic).then(kvs => console.log(kvs), e => console.log("Failed to store mnemonic: " + e));
+    
+                  d.wallet = w;
+                    },
+                e => {
+                  console.error("Failed to whitelist wallet, " + e);
+                }
+              )
+          },
+            e => {console.log("Failed to register account. " + e)}
+          );
+        } else {
+          console.info("Demo account '" + d.accountName + "' has O10 account registered. Checking for whitelisted MXW wallet");
+          let mne = await this.accountsApi.getMnemonic(d.account.accountId);
+
+          let isMne:boolean = !!mne;
+
+          if(isMne) {
+            console.info("There is stored mnemonic");
+            let wallet = await this.getWallet(mne);
+            if(await wallet.isWhitelisted()) {
+              console.info("MXW wallet is already whitelisted");
+              d.wallet = wallet;
+            } else {
+              console.info("MXW wallet exist but not whitelisted");
+              d.wallet = await this.whitelistWallet(wallet);
+              this.accountsApi.storeMnemonic(d.account.accountId, d.wallet.mnemonic).then(kvs => console.log(kvs), e => console.log("Failed to store mnemonic: " + e));
+            }
+          } else {
+            console.info("No stored mnemonic found. Creating new MXW wallet.");
+            d.wallet = await this.whitelistWallet(null);
+
+            console.info("MXW wallet for the demo account " + d.accountName + " crated and whitelisted. Storing its mnemonic");
+            this.accountsApi.storeMnemonic(d.account.accountId, d.wallet.mnemonic).then(
+              kvs => {
+                console.log("KeyValues are: " + kvs);
+              }, 
+              e => console.log("Failed to store mnemonic: " + e));
+          }
+        }
+
+        console.info("Authenticating demo account " + d.accountName);
+        await this.accountsApi.authenticate(d.account.accountId, "qqq");
+        console.info("Demo account " + d.accountName + " authenticated");
+        this.state.data.idpAccounts.push(d);
+
+        console.info("Initializing scheme for the Demo Account " + d.accountName);
+        let scheme = await this.initializeScheme(d);
+        console.log(scheme);
       });
     })
+  }
+
+  async getWallet(mne: string) {
+    return this.state.data.Wallets.getWallet(mne);
+  }
+
+  async whitelistWallet(wallet: mxw.Wallet) {
+    if(wallet) {
+      return this.state.data.Wallets.whitelistExistingWallet(demoConfig.mwxWalletMnes.providerMne, demoConfig.mwxWalletMnes.issuerMne, demoConfig.mwxWalletMnes.middlewareMne, wallet);
+    } else {
+      return this.state.data.Wallets.whitelistNewWallet(demoConfig.mwxWalletMnes.providerMne, demoConfig.mwxWalletMnes.issuerMne, demoConfig.mwxWalletMnes.middlewareMne);
+    }
+  }
+
+  async initializeScheme(account: DemoIdpAccount) {
+    var attributeDefinitions: NewAttributeDefinition[] = new Array();
+
+    account.identityScheme.forEach(s => 
+      {
+        attributeDefinitions.push({
+          attributeName: s.attributeName,
+          schemeName: s.schemeName,
+          alias: s.alias,
+          isRoot: s.isRoot,
+          description: ""
+        });
+      });
+    
+    return await this.schemeResolutionAPI.PutAttributeDefinitions(account.account.publicSpendKey, attributeDefinitions);
   }
 
   // Request for attributes issuance
