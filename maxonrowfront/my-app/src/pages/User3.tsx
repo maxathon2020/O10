@@ -12,6 +12,25 @@ class DataClass {
   private _issuerPublicKey: string;
   private _pulledIdentity: boolean;
 
+  private _providerSelectedName: string = "";
+  private _masterRootSelected: number = -1;
+
+  public get masterRootSelected():number{
+    return this._masterRootSelected;
+  }
+
+  public set masterRootSelected(value: number){
+    this._masterRootSelected = value;
+  }
+
+  public get providerSelectedName():string{
+    return this._providerSelectedName;
+  }
+
+  public set providerSelectedName(value: string){
+    this._providerSelectedName = value;
+  }
+
   public set publicSpendKey(value: string){
     this._publicSpendKey = value;
   }
@@ -1014,6 +1033,7 @@ class User3 extends Component<MyProps, MyState>{
               data.password = "";
               data.pulledIdentity = false;
               data.publicViewKey = "";
+              data.providerSelectedName = ""
               data.identityAccounts = [];
               this.setState({data});
             }}
@@ -1124,7 +1144,6 @@ class User3 extends Component<MyProps, MyState>{
 
   schematicList = () => {
     let data = this.state.data;
-    let rootAttributeId: number = -1;
     const sendData = () => {
       let packageObj = {};
       let attributeValues: {[key: string]: any};
@@ -1136,26 +1155,32 @@ class User3 extends Component<MyProps, MyState>{
           attributeValues = {...attributeValues, ...attributeObj}
         }
       })
-      packageObj = {
-        issuer: data.issuerPublicKey, 
-        attributeValues
+      if(data.masterRootSelected==-1){
+        packageObj = {
+          issuer: data.issuerPublicKey, 
+          attributeValues
+        }
+      }else{
+        packageObj = {
+          issuer: data.issuerPublicKey, 
+          attributeValues, 
+          masterRootAttributeId: data.masterRootSelected
+        }
       }
       console.log("value of packageObj: ", packageObj);
-        axios.post("http://localhost:5003/api/User/AttributesIssuance?accountId="+data.accountId.toString(), packageObj)
-        .then(resolve=>{
-          console.log('value of resolve: ', resolve);
-        })
-        .catch(error=>{
-          console.log("value of error: ", error);
-        })
-      //this.requestForIssuance();
+      axios.post("http://localhost:5003/api/User/AttributesIssuance?accountId="+data.accountId.toString(), packageObj)
+      .then(resolve=>{
+        console.log('value of resolve: ', resolve);
+      })
+      .catch(error=>{
+        console.log("value of error: ", error);
+      })
     }
 
     if(data.inputSchematics.length>0){
 
       const checkRoot=(type: string, key: number)=>{
         if(type=='root'){
-          rootAttributeId = key;
           return(
             <div>
               Root Attribute
@@ -1228,6 +1253,17 @@ class User3 extends Component<MyProps, MyState>{
             textAlign: 'center'
           }}
         >
+          <div
+            style={{
+              textDecoration: 'underline', 
+              marginTop: '5px', 
+              marginBottom: '5px', 
+              color: 'white', 
+              fontSize: '1.5rem'
+            }}
+          >
+            {this.state.data.providerSelectedName}
+          </div>
           {schematicList}
           <div
             className='button'
@@ -1280,6 +1316,64 @@ class User3 extends Component<MyProps, MyState>{
     })
   }
 
+  masterIDList = () => {
+    let data = this.state.data;
+
+    if(data.identityAccounts!=[]){
+      let idlist = data.identityAccounts.map((item, key)=>{
+        if(item.accountInfo!=data.providerSelectedName){
+          return(
+            <div
+              key={key}
+              className="button"
+              style={{
+                background: this.state.data.masterRootSelected==item.accountId?"green":"", 
+                marginBottom: '5px'
+              }}  
+              onClick={()=>{
+                let data = this.state.data;
+                if(data.masterRootSelected==-1){
+                  data.masterRootSelected = item.accountId
+                }else{
+                  data.masterRootSelected = -1
+                }
+                this.setState({data})
+              }}
+            >
+              {item.accountInfo}
+            </div>
+          );
+        }
+      })
+  
+      if(data.providerSelectedName!=""){
+        return(
+          <div
+            style={{
+              marginTop: '5px', 
+              marginBottom: '5px', 
+              background: 'blue', 
+              textAlign: 'center'
+            }}
+          >
+            <div
+              style={{
+                color: 'white'
+              }}
+            >
+              (Optional) Select a Master Root Attribute ID
+            </div>
+            {idlist}
+          </div>
+        )
+      }else{
+        return(
+          <div></div>
+        )
+      }
+    }
+  }
+
   availableIdentityProviders = () => {
     let data = this.state.data;
     // console.log("**** in availableIdentityProviders and data: ", this.state.data);
@@ -1314,6 +1408,7 @@ class User3 extends Component<MyProps, MyState>{
                 await this.setState({data});
                 console.log("value of account and publicKey: ", account)
                 data.issuerPublicKey = account.publicSpendKey;
+                data.providerSelectedName = account.accountInfo;
                 this.retrieveAttributesFromIdentity(account.accountId);
               }}
             >
@@ -1379,6 +1474,7 @@ class User3 extends Component<MyProps, MyState>{
           className="pages"
         > 
           {this.schematicList()}
+          {this.masterIDList()}
         </div>
       </>
     );
