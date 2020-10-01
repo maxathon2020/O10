@@ -67,6 +67,20 @@ export const demoConfig: DemoConfig = {
             ],
             account: null,
             wallet: null
+        },
+        {
+            accountName: "NorthWest Hospital",
+            accountType: 1,
+            identityScheme:[
+                {
+                    isRoot: true,
+                    schemeName: "DrivingLicense",
+                    attributeName: "CertificateNumber",
+                    alias: "Certificate Number"
+                }
+            ],
+            account: null,
+            wallet: null
         }
     ],
     spAccounts: [
