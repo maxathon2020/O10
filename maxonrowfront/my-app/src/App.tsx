@@ -758,24 +758,6 @@ class App extends Component<MyProps, MyState>{
                       display: 'inline', 
                       background: "black", 
                       color: "white", 
-                      marginRight: '20px',
-                      padding: '5px'
-                    }}
-                  >
-                    <Link to="/user3"
-                      style={{
-                        textDecoration: 'none',
-                        color: 'white'
-                      }}
-                    >
-                      User3
-                    </Link>
-                  </li>
-                  <li 
-                    style={{
-                      display: 'inline', 
-                      background: "black", 
-                      color: "white", 
                       padding: '5px', 
                       marginRight: '20px'
                     }} 
@@ -805,24 +787,6 @@ class App extends Component<MyProps, MyState>{
                       }}
                     >
                       Identity Provider
-                    </Link>
-                  </li>
-                  <li 
-                    style={{
-                      display: 'inline', 
-                      background: "black", 
-                      color: "white", 
-                      marginRight: '20px',
-                      padding: '5px'
-                    }}
-                  >
-                    <Link to="/identity2"
-                      style={{
-                        textDecoration: 'none',
-                        color: 'white'
-                      }}
-                    >
-                      Identity Provider 2
                     </Link>
                   </li>
                 </ul>
@@ -868,14 +832,6 @@ class App extends Component<MyProps, MyState>{
                 <Service/>
               </Route>
               <Route path="/identity">
-                <Identity2
-                  addToGroup={(accountId: string)=>{
-                    this.addToGroup(accountId)
-                  }}
-                  Wallets={this.state.data.Wallets}
-                />
-              </Route>
-              <Route path="/identity2">
                 <Identity2
                   addToGroup={(accountId: string)=>{
                     this.addToGroup(accountId)

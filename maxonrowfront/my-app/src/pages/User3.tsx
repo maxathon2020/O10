@@ -1301,22 +1301,25 @@ class User3 extends Component<MyProps, MyState>{
       console.log("inside data.identityAccounts.length>0")
       let identityList = data.identityAccounts.map((account, key)=>{
         return(
-          <div
-            key={key}
-            className="button"
-            style={{
-              marginTop: '5px'
-            }}
-            onClick={async()=>{
-              let data = this.state.data;
-              data.inputSchematics = [];
-              await this.setState({data});
-              console.log("value of account and publicKey: ", account)
-              data.issuerPublicKey = account.publicSpendKey;
-              this.retrieveAttributesFromIdentity(account.accountId);
-            }}
-          >
-            {account.accountInfo}
+          <div>
+            <div
+              key={key}
+              className="button"
+              style={{
+                marginTop: '5px'
+              }}
+              onClick={async()=>{
+                let data = this.state.data;
+                data.inputSchematics = [];
+                await this.setState({data});
+                console.log("value of account and publicKey: ", account)
+                data.issuerPublicKey = account.publicSpendKey;
+                this.retrieveAttributesFromIdentity(account.accountId);
+              }}
+            >
+              {account.accountInfo}
+            </div>
+            <br/>
           </div>
         );
       })

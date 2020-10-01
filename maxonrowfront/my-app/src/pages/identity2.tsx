@@ -1022,7 +1022,7 @@ class Identity2 extends Component<MyProps, MyState>{
             style={{
               width: '80%', 
               marginLeft: '10%',
-              background: this.state.data.attributesSelected.length>0?'green':"", 
+              background: this.state.data.attributesSelected.length>0?'rgb(52,79,142)':"", 
               maxHeight: '60vh', 
               overflowY: 'auto'
             }}
