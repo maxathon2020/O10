@@ -329,6 +329,7 @@ class Identity2 extends Component<MyProps, MyState>{
 
   componentDidMount(){
     console.log("value of Wallets on ComponentDidMount: ", this.props.Wallets);
+
   }
 
   // http://localhost:5003/api/SchemeResolution/SchemeItems
@@ -373,6 +374,7 @@ class Identity2 extends Component<MyProps, MyState>{
           data.loggedIn = true;
           this.setState({data});
           this.props.addToGroup(accountId);
+          this.getUserAttributes(accountId);
         })
         .catch(error=>{
           let data = this.state.data;
@@ -380,6 +382,16 @@ class Identity2 extends Component<MyProps, MyState>{
         })
       })
     }
+  }
+
+  getUserAttributes = (accountId: string) => {
+    axios.get("http://localhost:5003/api/User/UserAttribtutes?accountId:"+accountId)
+    .then(resolve=>{
+      console.log("value of resolve: ", resolve)
+    })
+    .catch(error=>{
+      console.log("value of error: ", error);
+    })
   }
 
   userNamePassword = () => {
