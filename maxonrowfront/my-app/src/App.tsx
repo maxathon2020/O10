@@ -9,7 +9,8 @@ import Identity2 from './pages/identity2';
 import SignalRClass from './shared/signalR';
 import AccountsAPI from './shared/accountsAPI';
 import SchemeResolutionAPI, { NewAttributeDefinition } from './shared/schemeResolutionAPI';
-import { DemoAccount, demoConfig, DemoIdpAccount } from "./shared/demoConfig";
+import ServiceProvidersAPI, { ValidationDefinitionsRequest } from './shared/serviceProvidersAPI';
+import { DemoAccount, demoConfig, DemoIdpAccount, DemoSpAccount } from "./shared/demoConfig";
 
 // import {ProviderOrSignerRequest} from './shared/initialize';
 import {
@@ -215,6 +216,7 @@ interface MyState {
 class App extends Component<MyProps, MyState>{
   accountsApi: AccountsAPI;
   schemeResolutionAPI: SchemeResolutionAPI;
+  serviceProvidersAPI: ServiceProvidersAPI;
 
   constructor(props: MyProps){
     super(props);
@@ -223,6 +225,7 @@ class App extends Component<MyProps, MyState>{
     }
     this.accountsApi = new AccountsAPI(this.state.data.baseApiUri);
     this.schemeResolutionAPI = new SchemeResolutionAPI(this.state.data.baseApiUri);
+    this.serviceProvidersAPI = new ServiceProvidersAPI(this.state.data.baseApiUri);
   }
 
   componentDidMount(){
@@ -244,58 +247,7 @@ class App extends Component<MyProps, MyState>{
       });
 
       demoConfig.idpAccounts.forEach(async d => {
-        console.info("Initializing demo account " + d.accountName);
-        if(!d.account) {
-          console.info("Need to register O10 account and whitelist MXW wallet");
-          this.accountsApi.register(d.accountType, d.accountName, "qqq").then(
-            a => {
-              d.account = a
-              this.whitelistWallet(null).then(
-                w => {
-                  this.accountsApi.storeMnemonic(d.account.accountId, w.mnemonic).then(kvs => console.log(kvs), e => console.log("Failed to store mnemonic: " + e));
-    
-                  d.wallet = w;
-                    },
-                e => {
-                  console.error("Failed to whitelist wallet, " + e);
-                }
-              )
-          },
-            e => {console.log("Failed to register account. " + e)}
-          );
-        } else {
-          console.info("Demo account '" + d.accountName + "' has O10 account registered. Checking for whitelisted MXW wallet");
-          let mne = await this.accountsApi.getMnemonic(d.account.accountId);
-
-          let isMne:boolean = !!mne;
-
-          if(isMne) {
-            console.info("There is stored mnemonic");
-            let wallet = await this.getWallet(mne);
-            if(await wallet.isWhitelisted()) {
-              console.info("MXW wallet is already whitelisted");
-              d.wallet = wallet;
-            } else {
-              console.info("MXW wallet exist but not whitelisted");
-              d.wallet = await this.whitelistWallet(wallet);
-              this.accountsApi.storeMnemonic(d.account.accountId, d.wallet.mnemonic).then(kvs => console.log(kvs), e => console.log("Failed to store mnemonic: " + e));
-            }
-          } else {
-            console.info("No stored mnemonic found. Creating new MXW wallet.");
-            d.wallet = await this.whitelistWallet(null);
-
-            console.info("MXW wallet for the demo account " + d.accountName + " crated and whitelisted. Storing its mnemonic");
-            this.accountsApi.storeMnemonic(d.account.accountId, d.wallet.mnemonic).then(
-              kvs => {
-                console.log("KeyValues are: " + kvs);
-              }, 
-              e => console.log("Failed to store mnemonic: " + e));
-          }
-        }
-
-        console.info("Authenticating demo account " + d.accountName);
-        await this.accountsApi.authenticate(d.account.accountId, "qqq");
-        console.info("Demo account " + d.accountName + " authenticated");
+        await this.initializeDemoAccount(d);
         this.state.data.idpAccounts.push(d);
 
         console.info("Initializing scheme for the Demo Account " + d.accountName);
@@ -303,6 +255,78 @@ class App extends Component<MyProps, MyState>{
         console.log(scheme);
       });
     })
+  
+    console.info("Starting demo SP accounts initialization");
+    this.accountsApi.get(2).then(r => {
+      r.forEach(a => {        
+        var demoSpAccount = demoConfig.spAccounts.find(v => v.accountName == a.accountInfo);
+        if(demoSpAccount) {
+          demoSpAccount.account = a;
+        }
+      });
+
+      demoConfig.spAccounts.forEach(async d => {
+        await this.initializeDemoAccount(d);
+        this.state.data.spAccounts.push(d);
+
+        await this.initializeAttributeValidation(d);
+      });
+    });
+  }
+
+  private async initializeDemoAccount(d: DemoAccount) {
+    console.info("Initializing demo account " + d.accountName);
+    if (!d.account) {
+      console.info("Need to register O10 account and whitelist MXW wallet");
+      this.accountsApi.register(d.accountType, d.accountName, "qqq").then(
+        a => {
+          d.account = a;
+          this.whitelistWallet(null).then(
+            w => {
+              this.accountsApi.storeMnemonic(d.account.accountId, w.mnemonic).then(kvs => console.log(kvs), e => console.log("Failed to store mnemonic: " + e));
+
+              d.wallet = w;
+            },
+            e => {
+              console.error("Failed to whitelist wallet, " + e);
+            }
+          );
+        },
+        e => { console.log("Failed to register account. " + e); }
+      );
+    } else {
+      console.info("Demo account '" + d.accountName + "' has O10 account registered. Checking for whitelisted MXW wallet");
+      let mne = await this.accountsApi.getMnemonic(d.account.accountId);
+
+      let isMne: boolean = !!mne;
+
+      if (isMne) {
+        console.info("There is stored mnemonic");
+        let wallet = await this.getWallet(mne);
+        if (await wallet.isWhitelisted()) {
+          console.info("MXW wallet is already whitelisted");
+          d.wallet = wallet;
+        } else {
+          console.info("MXW wallet exist but not whitelisted");
+          d.wallet = await this.whitelistWallet(wallet);
+          this.accountsApi.storeMnemonic(d.account.accountId, d.wallet.mnemonic).then(kvs => console.log(kvs), e => console.log("Failed to store mnemonic: " + e));
+        }
+      } else {
+        console.info("No stored mnemonic found. Creating new MXW wallet.");
+        d.wallet = await this.whitelistWallet(null);
+
+        console.info("MXW wallet for the demo account " + d.accountName + " crated and whitelisted. Storing its mnemonic");
+        this.accountsApi.storeMnemonic(d.account.accountId, d.wallet.mnemonic).then(
+          kvs => {
+            console.log("KeyValues are: " + kvs);
+          },
+          e => console.log("Failed to store mnemonic: " + e));
+      }
+    }
+
+    console.info("Authenticating demo account " + d.accountName);
+    await this.accountsApi.authenticate(d.account.accountId, "qqq");
+    console.info("Demo account " + d.accountName + " authenticated");
   }
 
   async getWallet(mne: string) {
@@ -332,6 +356,36 @@ class App extends Component<MyProps, MyState>{
       });
     
     return await this.schemeResolutionAPI.PutAttributeDefinitions(account.account.publicSpendKey, attributeDefinitions);
+  }
+
+  async initializeAttributeValidation(account: DemoSpAccount) {
+    if(account.validations.length == 0) {
+      console.info("No validations for the Demo Account " + account.accountName);
+      return; 
+    }
+
+    console.info("Setting validations for the Demo Account " + account.accountName);
+
+    var attributeValidations: ValidationDefinitionsRequest = {
+      identityAttributeValidationDefinitions: new Array()
+    }
+
+    account.validations.forEach(v => {
+      attributeValidations.identityAttributeValidationDefinitions.push({
+        schemeName: v.schemeName,
+        validationType: v.validationType.toString(),
+        criterionValue: null
+      });
+    });
+
+    await this.serviceProvidersAPI.PutAttributeDefinitions(account.account.accountId, attributeValidations).then(
+      r => {
+        console.info("Validation set successfully");
+      },
+      e => {
+        console.error("Failed to set validations for the Demo Account " + account.accountName, e);
+      }
+    );
   }
 
   // Request for attributes issuance

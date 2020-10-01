@@ -161,7 +161,7 @@ namespace O10.Web.Server.Controllers
                         AccountId = accountId,
                         SchemeName = i.SchemeName,
                         ValidationType = (ValidationType)ushort.Parse(i.ValidationType, CultureInfo.InvariantCulture),
-                        NumericCriterion = i.CriterionValue != null ? ushort.Parse(i.CriterionValue, CultureInfo.InvariantCulture) : new ushort?(),
+                        NumericCriterion = (!string.IsNullOrEmpty(i.CriterionValue)) ? ushort.Parse(i.CriterionValue, CultureInfo.InvariantCulture) : new ushort?(),
                         GroupIdCriterion = i.CriterionValue?.HexStringToByteArray()
                     }).ToList();
 

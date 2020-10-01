@@ -73,8 +73,24 @@ export const demoConfig: DemoConfig = {
         {
             accountName: "Municipality",
             accountType: 2,
-            account: null,
             validations: [],
+            account: null,
+            wallet: null
+        },
+        {
+            accountName: "Border Control",
+            accountType: 2,
+            validations: [
+                {
+                    schemeName: "FirstName",
+                    validationType: 1
+                },
+                {
+                    schemeName: "LastName",
+                    validationType: 1
+                }
+            ],
+            account: null,
             wallet: null
         }
     ],
