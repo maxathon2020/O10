@@ -224,6 +224,7 @@ class App extends Component<MyProps, MyState>{
         data: new DataClass()
     }
     this.accountsApi = new AccountsAPI(this.state.data.baseApiUri);
+    console.log("value of this.accountsApi: ", this.accountsApi);
     this.schemeResolutionAPI = new SchemeResolutionAPI(this.state.data.baseApiUri);
     this.serviceProvidersAPI = new ServiceProvidersAPI(this.state.data.baseApiUri);
   }
@@ -827,7 +828,7 @@ class App extends Component<MyProps, MyState>{
                     this.requestForIssuance(accountId, packageObj)
                   }}
                 />
-              </Route>
+                </Route>
               <Route path="/service">
                 <Service/>
               </Route>

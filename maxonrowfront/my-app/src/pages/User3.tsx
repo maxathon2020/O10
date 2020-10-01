@@ -7,6 +7,17 @@ import { queryAllByAttribute } from '@testing-library/react';
 import * as crypto from "crypto";
 
 class DataClass {
+
+  private _userAttributesPrev: {[key: string]: any}[] = [];
+
+  public get userAttributesPrev():{[key: string]: any}[]{
+    return this._userAttributesPrev;
+  }
+
+  public set userAttributesPrev(value: {[key: string]: any}[]){
+    this._userAttributesPrev = value;
+  }
+
   private _publicSpendKey: string;
   private _inputSchematics: {[key: string]: any}[] = [];
   private _issuerPublicKey: string;
@@ -270,6 +281,26 @@ interface UserAccounts{
   publicSpendKey: string
 }
 
+interface RootAttributes{
+  userAttributeId: number, 
+  schemeName: string,
+  source: string, 
+  issuerName: string, 
+  validated: boolean, 
+  content: string, 
+  isOverriden: boolean
+}
+
+interface UserAttributes{
+  state: number, 
+  issuer: string, 
+  issuerName: string, 
+  rootAttributeContent: string, 
+  rootAssetId: string, 
+  schemeName: string, 
+  rootAttributes: RootAttributes[]
+}
+
 interface IdentityAccounts{
   accountId: number, 
   accountType: number, 
@@ -329,10 +360,6 @@ interface Authenticate{
     ]
     },...
 ] */}
-
-interface UserAttributes{
-
-}
 
 // {
 //   rootAttribute: {
@@ -748,8 +775,10 @@ class User3 extends Component<MyProps, MyState>{
           data.publicViewKey = resolve.data.publicViewKey;
           data.loginRegisterErrorMessage = "user successfully logged in";
           data.loggedIn = true;
-          this.setState({data});
-          this.addToGroup();
+          this.setState({data}, ()=>{
+            this.addToGroup();
+            this.getUserAttributes();
+          });
         })
         .catch(error=>{
           console.log("value of error: ", error);
@@ -762,6 +791,17 @@ class User3 extends Component<MyProps, MyState>{
         console.log("there was an error: ", error); 
       })
     }
+  }
+
+  getUserAttributes = () => {
+    axios.get<UserAttributes[]>("http://localhost:5003/api/User/UserAttributes?accountId="+this.state.data.accountId)
+    .then(resolve=>{
+      console.log("value of resolve (getUserAttributes): ", resolve);
+
+    })
+    .catch(error=>{
+      console.log('value of error (getUserAttributes)', error);
+    })
   }
 
   addRootAttributeButton = () => {
@@ -1144,145 +1184,147 @@ class User3 extends Component<MyProps, MyState>{
 
   schematicList = () => {
     let data = this.state.data;
-    const sendData = () => {
-      let packageObj = {};
-      let attributeValues: {[key: string]: any};
-      data.inputSchematics.forEach((attribute, key)=>{
-        if(attribute.attributeName!="Password"){
-          let attributeObj = {
-            [attribute.attributeName]: attribute.input.toString()
+    if(data.loggedIn){
+      const sendData = () => {
+        let packageObj = {};
+        let attributeValues: {[key: string]: any};
+        data.inputSchematics.forEach((attribute, key)=>{
+          if(attribute.attributeName!="Password"){
+            let attributeObj = {
+              [attribute.attributeName]: attribute.input.toString()
+            }
+            attributeValues = {...attributeValues, ...attributeObj}
           }
-          attributeValues = {...attributeValues, ...attributeObj}
-        }
-      })
-      if(data.masterRootSelected==-1){
-        packageObj = {
-          issuer: data.issuerPublicKey, 
-          attributeValues
-        }
-      }else{
-        packageObj = {
-          issuer: data.issuerPublicKey, 
-          attributeValues, 
-          masterRootAttributeId: data.masterRootSelected
-        }
-      }
-      console.log("value of packageObj: ", packageObj);
-      axios.post("http://localhost:5003/api/User/AttributesIssuance?accountId="+data.accountId.toString(), packageObj)
-      .then(resolve=>{
-        console.log('value of resolve: ', resolve);
-      })
-      .catch(error=>{
-        console.log("value of error: ", error);
-      })
-    }
-
-    if(data.inputSchematics.length>0){
-
-      const checkRoot=(type: string, key: number)=>{
-        if(type=='root'){
-          return(
-            <div>
-              Root Attribute
-            </div>
-          )
+        })
+        if(data.masterRootSelected==-1){
+          packageObj = {
+            issuer: data.issuerPublicKey, 
+            attributeValues
+          }
         }else{
-          return(
-            <div>
-              Associated Attribute
-            </div>
-          )
+          packageObj = {
+            issuer: data.issuerPublicKey, 
+            attributeValues, 
+            masterRootAttributeId: data.masterRootSelected
+          }
         }
+        console.log("value of packageObj: ", packageObj);
+        axios.post("http://localhost:5003/api/User/AttributesIssuance?accountId="+data.accountId.toString(), packageObj)
+        .then(resolve=>{
+          console.log('value of resolve: ', resolve);
+        })
+        .catch(error=>{
+          console.log("value of error: ", error);
+        })
       }
-
-      let schematicList = data.inputSchematics.map((schematic, key)=>{
-        if(schematic.attributeName!="Password"){
-          return(
-            <div
-              key={key}
-              style={{
-                color: 'white', 
-                marginTop: '5px', 
-                marginBottom: '5px'
-              }}
-            >
-              {checkRoot(schematic.type, key)}
-              <div
-                style={{
-                  color: 'white'
-                }}
-              > 
-                Attribute Name - {schematic.attributeName}
-              </div>
+  
+      if(data.inputSchematics.length>0){
+  
+        const checkRoot=(type: string, key: number)=>{
+          if(type=='root'){
+            return(
               <div>
+                Root Attribute
+              </div>
+            )
+          }else{
+            return(
+              <div>
+                Associated Attribute
+              </div>
+            )
+          }
+        }
+  
+        let schematicList = data.inputSchematics.map((schematic, key)=>{
+          if(schematic.attributeName!="Password"){
+            return(
+              <div
+                key={key}
+                style={{
+                  color: 'white', 
+                  marginTop: '5px', 
+                  marginBottom: '5px'
+                }}
+              >
+                {checkRoot(schematic.type, key)}
                 <div
                   style={{
-                    display: 'flex', 
-                    flexDirection: 'row'
+                    color: 'white'
                   }}
-                >
+                > 
+                  Attribute Name - {schematic.attributeName}
+                </div>
+                <div>
                   <div
                     style={{
-                      flex: 1, 
-                      color: "white"
+                      display: 'flex', 
+                      flexDirection: 'row'
                     }}
                   >
-                    Alias - {schematic.alias}
-                  </div>
-                  <div
-                    style={{
-                      flex: 1
-                    }}
-                  >
-                    <input
-                      className='input'
-                      onChange={(e)=>{
-                        data.inputSchematics[key].input = e.target.value;
+                    <div
+                      style={{
+                        flex: 1, 
+                        color: "white"
                       }}
-                    />
+                    >
+                      Alias - {schematic.alias}
+                    </div>
+                    <div
+                      style={{
+                        flex: 1
+                      }}
+                    >
+                      <input
+                        className='input'
+                        onChange={(e)=>{
+                          data.inputSchematics[key].input = e.target.value;
+                        }}
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          );
-        }
-      })
-      return(
-        <div
-          style={{
-            textAlign: 'center'
-          }}
-        >
+            );
+          }
+        })
+        return(
           <div
             style={{
-              textDecoration: 'underline', 
-              marginTop: '5px', 
-              marginBottom: '5px', 
-              color: 'white', 
-              fontSize: '1.5rem'
-            }}
-          >
-            {this.state.data.providerSelectedName}
-          </div>
-          {schematicList}
-          <div
-            className='button'
-            style={{
-              marginTop: '10px', 
               textAlign: 'center'
             }}
-            onClick={()=>{
-              sendData();
-            }}
           >
-            Send Data
+            <div
+              style={{
+                textDecoration: 'underline', 
+                marginTop: '5px', 
+                marginBottom: '5px', 
+                color: 'white', 
+                fontSize: '1.5rem'
+              }}
+            >
+              {this.state.data.providerSelectedName}
+            </div>
+            {schematicList}
+            <div
+              className='button'
+              style={{
+                marginTop: '10px', 
+                textAlign: 'center'
+              }}
+              onClick={()=>{
+                sendData();
+              }}
+            >
+              Send Data
+            </div>
           </div>
-        </div>
-      );
-    }else{
-      return(
-        <div/>
-      );
+        );
+      }else{
+        return(
+          <div/>
+        );
+      }
     }
   }
 
