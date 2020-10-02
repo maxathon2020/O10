@@ -1,6 +1,6 @@
 #!/bin/bash
 
-git add . 
+git add .
 git commit -m 'debug changes'
 git push origin peterdebugserver
 sudo docker-compose down
