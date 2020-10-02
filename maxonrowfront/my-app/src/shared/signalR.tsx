@@ -2,7 +2,13 @@ import * as signalR from '@microsoft/signalr';
 
 export default class SignalRClass{
 
-  private hubConnection: signalR.HubConnection;
+  private _hubConnection: signalR.HubConnection;
+  public get hubConnection(): signalR.HubConnection {
+    return this._hubConnection;
+  }
+  public set hubConnection(value: signalR.HubConnection) {
+    this._hubConnection = value;
+  }
   private _accountId: string;
   private _registrations: {[key: string]:any}[]
   private _spAttributes: {[key: string]:any}[]
@@ -31,7 +37,7 @@ export default class SignalRClass{
     this._accountId = value;
   }
 
-  public initializeHub(){ 
+  public async initializeHub(accountId: number){ 
     this.hubConnection = new signalR.HubConnectionBuilder()
     .withUrl("http://localhost:5003/identitiesHub")
     .configureLogging(signalR.LogLevel.Information)
@@ -47,12 +53,11 @@ export default class SignalRClass{
     };
     this.hubConnection.onclose(start);
     // Start the connection.
-    start();
+    await start();
 
-    this.hubConnection.on("RequestForIssuance", (i) => {
-      console.info("RequestForIssuance");
-			console.info(i);
-		});
+    await this.AddToGroup(accountId);
+
+    return this.hubConnection;
 		this.hubConnection.on("PushAttribute", (i) => {
 			this.spAttributes.push(i);
     });
@@ -67,10 +72,10 @@ export default class SignalRClass{
   
   }
 
-  public AddToGroup(){
-    console.log("inside AddToGroup(" + this.accountId + ")");
-    this.hubConnection
-       .invoke("AddToGroup", this.accountId)
+  private async AddToGroup(accountId: number){
+    console.log("inside AddToGroup(" + accountId + ")");
+    await this.hubConnection
+       .invoke("AddToGroup", accountId.toString())
        .then(r => {},e => {console.error(e)});
   }
 

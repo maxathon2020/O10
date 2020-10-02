@@ -12,8 +12,16 @@ import Approver from '../nft/approver';
 import Util from "../nft/util";
 import Minter from '../nft/minter';
 import * as crypto from "crypto";
+import { DemoIdPAccountState, DemoState } from '../shared/demoAccountState';
 
 class DataClass{
+  private _selectedDemoIdpAccount: DemoIdPAccountState;
+  public get selectedDemoIdpAccount(): DemoIdPAccountState {
+    return this._selectedDemoIdpAccount;
+  }
+  public set selectedDemoIdpAccount(value: DemoIdPAccountState) {
+    this._selectedDemoIdpAccount = value;
+  }
   private _loginRegisterErrorMessage = "";
   private _trxReceipt: TransactionReceipt = null;
   private _symbol: string;
@@ -255,8 +263,8 @@ class DataClass{
 }
 
 interface MyProps {
-  Wallets: ProviderOrSignerRequest, 
-  addToGroup: (arg0: string)=>void
+  Wallets: ProviderOrSignerRequest,
+  DemoState: DemoState;
 };
 interface MyState {
   data: DataClass;
@@ -353,34 +361,39 @@ class Identity2 extends Component<MyProps, MyState>{
     data.loginRegisterErrorMessage = "";
     if(data.username==""||data.password==""){
       data.loginRegisterErrorMessage = "neither username nor password may be blank";
-      this.setState({data});
     }else{
-      axios.get<UserAccounts[]>("http://localhost:5003/api/accounts?ofTypeOnly=1")
-      .then(resolve=>{
-        let accountId = "";
-        resolve.data.forEach(account=>{
-          if(account.accountInfo==data.username){
-            accountId = account.accountId.toString();
-          }
-        })
-        axios.post<Authenticate>('http://localhost:5003/api/accounts/authenticate', {
-          accountId, 
-          password: data.password
-        })
-        .then(resolve=>{
-          let data = this.state.data;
-          data.publicSpendKey = resolve.data.publicSpendKey
-          data.loginRegisterErrorMessage = "user successfully logged in";
-          data.loggedIn = true;
-          this.setState({data});
-          this.props.addToGroup(accountId);
-          this.getUserAttributes(accountId);
-        })
-        .catch(error=>{
-          let data = this.state.data;
-          data.loginRegisterErrorMessage = "username or message is invalid";
-        })
-      })
+      const demoAccount = this.props.DemoState.idpAccountStates.find(a => a.demoAccount.accountName == data.username);
+      data.selectedDemoIdpAccount = demoAccount;
+      data.publicSpendKey = demoAccount.demoAccount.account.publicSpendKey
+      data.loginRegisterErrorMessage = "user successfully logged in";
+      data.loggedIn = true;
+      // axios.get<UserAccounts[]>("http://localhost:5003/api/accounts?ofTypeOnly=1")
+      // .then(resolve=>{
+      //   let accountId = "";
+      //   resolve.data.forEach(account=>{
+      //     if(account.accountInfo==data.username){
+      //       accountId = account.accountId.toString();
+      //     }
+      //   })
+      //   axios.post<Authenticate>('http://localhost:5003/api/accounts/authenticate', {
+      //     accountId, 
+      //     password: data.password
+      //   })
+      //   .then(resolve=>{
+      //     let data = this.state.data;
+      //     data.publicSpendKey = resolve.data.publicSpendKey
+      //     data.loginRegisterErrorMessage = "user successfully logged in";
+      //     data.loggedIn = true;
+      //     this.setState({data});
+      //     //this.props.addToGroup(accountId);
+      //     this.getUserAttributes(accountId);
+      //   })
+      //   .catch(error=>{
+      //     let data = this.state.data;
+      //     data.loginRegisterErrorMessage = "username or message is invalid";
+      //   })
+      //})
+      this.setState({data});
     }
   }
 
@@ -391,6 +404,29 @@ class Identity2 extends Component<MyProps, MyState>{
     })
     .catch(error=>{
       console.log("value of error: ", error);
+    })
+  }
+
+  listOfAccounts = () => {
+    let data = this.state.data;
+
+    return this.props.DemoState.idpAccountStates.map(a => {
+      return(
+        <div
+            className="button"
+            style={{
+              marginLeft: '20%', 
+              marginRight: '20%', 
+              width: '60%', 
+              marginTop: '20px'
+            }}
+            onClick={()=>{
+              this.selectDemoIdpAccount(a);
+            }}
+          >
+            {a.demoAccount.accountName}
+          </div>  
+      )
     })
   }
 
@@ -527,6 +563,9 @@ class Identity2 extends Component<MyProps, MyState>{
     );
   }
   
+  selectDemoIdpAccount(d: DemoIdPAccountState) {
+    this.state.data.selectedDemoIdpAccount = d;
+  }
 
   registerAccount = async() => {
     //http://localhost:5003/api/accounts
@@ -1001,6 +1040,7 @@ class Identity2 extends Component<MyProps, MyState>{
         <div
           className="leftpanel"
         >
+          {/* {this.listOfAccounts()} */}
           {this.userNamePassword()}
         </div>
         <div

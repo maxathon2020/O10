@@ -25,6 +25,8 @@ import ProviderOrSignerRequest from './shared/initialize';
 import { Provider } from 'mxw-sdk-js/dist/providers';
 import './css/main.css';
 import Axios from 'axios';
+import { DemoIdPAccountState, DemoState } from './shared/demoAccountState';
+import { debug } from 'console';
 
 
 class DataClass{
@@ -35,11 +37,19 @@ class DataClass{
   private _provider: string = "mxw1f8r0k5p7s85kv7jatwvmpartyy2j0s20y0p0yk";
   private _middleware: string = "mxw1md4u2zxz2ne5vsf9t4uun7q2k0nc3ly5g22dne";
 
-  private _idpAccounts: DemoAccount[] = new Array();
-  public get idpAccounts(): DemoAccount[] {
+  private _demoState: DemoState = new DemoState()
+  public get demoState(): DemoState {
+    return this._demoState;
+  }
+  public set demoState(value: DemoState) {
+    this._demoState = value;
+  }
+
+  private _idpAccounts: DemoIdPAccountState[] = new Array();
+  public get idpAccounts(): DemoIdPAccountState[] {
     return this._idpAccounts;
   }
-  public set idpAccounts(value: DemoAccount[]) {
+  public set idpAccounts(value: DemoIdPAccountState[]) {
     this._idpAccounts = value;
   }
   private _spAccounts: DemoAccount[] = new Array();
@@ -48,16 +58,6 @@ class DataClass{
   }
   public set spAccounts(value: DemoAccount[]) {
     this._spAccounts = value;
-  }
-
-  private _signalR: SignalRClass
-
-  public get signalR():SignalRClass{
-    return this._signalR;
-  }
-
-  public set signalR(value: SignalRClass){
-    this._signalR = value;
   }
 
   // //kyc-prov-1
@@ -231,8 +231,6 @@ class App extends Component<MyProps, MyState>{
 
   componentDidMount(){
     let data = this.state.data;
-    data.signalR = new SignalRClass();
-    data.signalR.initializeHub();
     this.setState({data});
     this.initializeHandler();
     this.initializeAccounts();
@@ -250,7 +248,12 @@ class App extends Component<MyProps, MyState>{
 
       demoConfig.idpAccounts.forEach(async d => {
         await this.initializeDemoAccount(d);
-        this.state.data.idpAccounts.push(d);
+
+        const demoIdpAccountState = new DemoIdPAccountState();
+        demoIdpAccountState.demoAccount = d;
+        demoIdpAccountState.initializeSignalR();
+
+        this.state.data.demoState.idpAccountStates.push(demoIdpAccountState);
 
         console.info("Initializing scheme for the Demo Account " + d.accountName);
         let scheme = await this.initializeScheme(d);
@@ -280,7 +283,7 @@ class App extends Component<MyProps, MyState>{
     console.info("Initializing demo account " + d.accountName);
     if (!d.account) {
       console.info("Need to register O10 account and whitelist MXW wallet");
-      this.accountsApi.register(d.accountType, d.accountName, "qqq").then(
+      await this.accountsApi.register(d.accountType, d.accountName, "qqq").then(
         a => {
           d.account = a;
           this.whitelistWallet(null).then(
@@ -414,18 +417,6 @@ class App extends Component<MyProps, MyState>{
   // 204b9505556c687e3d8a491d1850054ac848896303fafaf18af2d3e933f97d88
   // b4bbe17841ria25c144209eda794599eb632491842d5afb7f0eabcd9cd0bcecc8
 
-
-  addToGroup = (clientId: string) => {
-    console.log("inside addtogroup")
-    this.state.data.signalR.accountId = clientId;
-    console.log("&&&&&&&&&&&&&ADDTOGROUP&&&&&&&&&&&&&")
-    this.state.data.signalR.AddToGroup();
-    console.log("&&&&&&&&&&&&&ADDTOGROUP&&&&&&&&&&&&&")
-  }
-
-  requestForIssuance = (clientId: string, packageObj: {[key: string]: any}[]) => {
-    this.state.data.signalR.RequestForIssuance()
-  }
 
   initializeHandler = () => {
     let data = this.state.data;
@@ -823,10 +814,8 @@ class App extends Component<MyProps, MyState>{
               <Route path="/user">
                 <User3
                   addToGroup={(accountId: string)=>{
-                    this.addToGroup(accountId)
                   }}
                   requestForIssuance={(accountId:string, packageObj:{[key: string]:any}[])=>{
-                    this.requestForIssuance(accountId, packageObj)
                   }}
                 />
                 </Route>
@@ -835,10 +824,8 @@ class App extends Component<MyProps, MyState>{
               </Route>
               <Route path="/identity">
                 <Identity2
-                  addToGroup={(accountId: string)=>{
-                    this.addToGroup(accountId)
-                  }}
                   Wallets={this.state.data.Wallets}
+                  DemoState={this.state.data.demoState}
                 />
               </Route>
             </Switch>
