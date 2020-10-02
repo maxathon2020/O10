@@ -97,6 +97,8 @@ namespace O10.Web.Server.Controllers
                 PublicViewKey = accountDescriptor.PublicViewKey.ToHexString()
             };
 
+            _logger.LogifDebug(()=>$"TESTING DEBUGGER");
+
             _logger.LogIfDebug(() => $"[{accountDto.AccountId}]: Authenticated account {JsonConvert.SerializeObject(forLog)}");
 
             return Ok(_translatorsRepository.GetInstance<AccountDescriptor, AccountDto>().Translate(accountDescriptor));
