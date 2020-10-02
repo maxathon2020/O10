@@ -153,7 +153,7 @@ namespace O10.Web.Server.Services
 
         private IUpdater CreateStateUpdater(long accountId, IStateTransactionsService transactionsService, IStateClientCryptoService clientCryptoService,
                                       CancellationToken cancellationToken)
-            => new ServiceProviderUpdater(accountId, clientCryptoService, _assetsService, _dataAccessService, _identityAttributesService,
+            => new ServiceProviderUpdater(accountId, clientCryptoService, _assetsService, _schemeResolverService, _dataAccessService, _identityAttributesService,
                                  _blockParsersRepositoriesRepository, _gatewayService, transactionsService, _spValidationsService,
                                  _identitiesHubContext, _loggerService, _consentManagementService, _universalProofsPool, cancellationToken);
 

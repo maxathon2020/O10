@@ -37,6 +37,7 @@ namespace O10.Web.Server.Services
         private readonly ILogger _logger;
         private readonly IStateClientCryptoService _clientCryptoService;
         private readonly IAssetsService _assetsService;
+        private readonly ISchemeResolverService _schemeResolverService;
         private readonly IDataAccessService _dataAccessService;
         private readonly IIdentityAttributesService _identityAttributesService;
         private readonly IBlockParsersRepositoriesRepository _blockParsersRepositoriesRepository;
@@ -52,6 +53,7 @@ namespace O10.Web.Server.Services
         public ServiceProviderUpdater(long accountId,
                                 IStateClientCryptoService clientCryptoService,
                                 IAssetsService assetsService,
+                                ISchemeResolverService schemeResolverService,
                                 IDataAccessService dataAccessService,
                                 IIdentityAttributesService identityAttributesService,
                                 IBlockParsersRepositoriesRepository blockParsersRepositoriesRepository,
@@ -67,6 +69,7 @@ namespace O10.Web.Server.Services
             _accountId = accountId;
             _clientCryptoService = clientCryptoService;
             _assetsService = assetsService;
+            _schemeResolverService = schemeResolverService;
             _dataAccessService = dataAccessService;
             _identityAttributesService = identityAttributesService;
             _blockParsersRepositoriesRepository = blockParsersRepositoriesRepository;
@@ -262,15 +265,24 @@ namespace O10.Web.Server.Services
             SurjectionProof registrationProof = universalProofs.IssuersAttributes.FirstOrDefault(a => a.Issuer.Equals(universalProofs.Issuer))?.RootAttribute.CommitmentProof.SurjectionProof;
             (long registrationId, bool isNew) = _spValidationsService.HandleAccount(_accountId, commitment.Value, registrationProof);
 
+            var issuer = universalProofs.Issuer.ToString();
+            var issuerName = await _schemeResolverService.ResolveIssuer(issuer).ConfigureAwait(false);
+            var rootAttributeDefinition = await _assetsService.GetRootAttributeSchemeName(issuer).ConfigureAwait(false);
+            
+
             if (isNew)
             {
                 await _idenitiesHubContext
                     .Clients.Group(_accountId.ToString(CultureInfo.InvariantCulture))
                     .SendAsync("PushRegistration",
-                        new ServiceProviderRegistrationDto
+                        new ServiceProviderRegistrationExDto
                         {
+                            Issuer = issuer,
+                            IssuerName = issuerName,
+                            RootAttributeName = rootAttributeDefinition.AttributeName,
                             ServiceProviderRegistrationId = registrationId.ToString(CultureInfo.InvariantCulture),
-                            Commitment = registrationProof.AssetCommitments[0].ToHexString()
+                            Commitment = registrationProof.AssetCommitments[0].ToHexString(),
+                            IssuanceCommitments = universalProofs.IssuersAttributes.Find(s => s.Issuer.Equals(universalProofs.Issuer)).Attributes.Find(a => a.SchemeName == rootAttributeDefinition.SchemeName).BindingProof.AssetCommitments.Select(a => a.ToHexString()).ToList()
                         })
                     .ConfigureAwait(false);
                 await _idenitiesHubContext
@@ -288,11 +300,16 @@ namespace O10.Web.Server.Services
                 await _idenitiesHubContext
                     .Clients
                     .Group(_accountId.ToString(CultureInfo.InvariantCulture))
-                    .SendAsync("PushAuthorizationSucceeded", new ServiceProviderRegistrationDto
-                    {
-                        ServiceProviderRegistrationId = registrationId.ToString(CultureInfo.InvariantCulture),
-                        Commitment = registrationProof.AssetCommitments[0].ToHexString()
-                    }).ConfigureAwait(false);
+                    .SendAsync("PushAuthorizationSucceeded",
+                        new ServiceProviderRegistrationExDto
+                        {
+                            Issuer = issuer,
+                            IssuerName = issuerName,
+                            RootAttributeName = rootAttributeDefinition.AttributeName,
+                            ServiceProviderRegistrationId = registrationId.ToString(CultureInfo.InvariantCulture),
+                            Commitment = registrationProof.AssetCommitments[0].ToHexString(),
+                            IssuanceCommitments = universalProofs.IssuersAttributes.Find(s => s.Issuer.Equals(universalProofs.Issuer)).Attributes.Find(a => a.SchemeName == rootAttributeDefinition.SchemeName).BindingProof.AssetCommitments.Select(a => a.ToHexString()).ToList()
+                        }).ConfigureAwait(false);
                 ProceedCorrectAuthentication(universalProofs.KeyImage, universalProofs.SessionKey);
             }
         }

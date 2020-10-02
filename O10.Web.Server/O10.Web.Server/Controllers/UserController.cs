@@ -1518,7 +1518,7 @@ namespace O10.Web.Server.Controllers
         private async Task<List<string>> GetRequiredValidations(List<Tuple<string, ValidationType>> validations, string issuer)
         {
             List<string> requiredValidations = new List<string>();
-            IEnumerable<(string schemeName, string alias)> attributeDescriptions = await _identityAttributesService.GetAssociatedAttributeSchemes(issuer).ConfigureAwait(false);
+            var attributeDescriptions = await _assetsService.GetAssociatedAttributeSchemeNames(issuer).ConfigureAwait(false);
             IEnumerable<(string validationType, string validationDescription)> validationDescriptions = _identityAttributesService.GetAssociatedValidationTypes();
 
             foreach (var validation in validations)
@@ -1529,7 +1529,7 @@ namespace O10.Web.Server.Controllers
                 }
                 else
                 {
-                    requiredValidations.Add(ResolveValue(attributeDescriptions, validation.Item1));
+                    requiredValidations.Add(ResolveValue(attributeDescriptions.Select(a => (a.SchemeName, a.Alias)), validation.Item1));
                 }
             }
 
