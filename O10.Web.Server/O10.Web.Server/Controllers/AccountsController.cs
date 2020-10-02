@@ -167,6 +167,8 @@ namespace O10.Web.Server.Controllers
         [HttpPost("Register")]
         public IActionResult Register([FromBody] AccountDto accountDto)
         {
+
+            _logger.Debug("~~~~~~~~~~~~~~~~~~~~~~~~ INSIDE REGISTER ~~~~~~~~~~~~~~~~~~~~~~~~");
             try
             {
                 long accountId = _accountsService.Create((AccountType)accountDto.AccountType, accountDto.AccountInfo, accountDto.Password);

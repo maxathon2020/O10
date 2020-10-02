@@ -31,7 +31,7 @@ export default class SignalRClass{
     this._accountId = value;
   }
 
-  public initializeHub(){
+  public initializeHub(){ 
     this.hubConnection = new signalR.HubConnectionBuilder()
     .withUrl("http://localhost:5003/identitiesHub")
     .configureLogging(signalR.LogLevel.Information)

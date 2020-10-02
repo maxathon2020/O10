@@ -346,7 +346,7 @@ namespace O10.Web.Server.Controllers
             Guid guid = _dataAccessService.FindPersonGuid(registrationKey);
             if (guid == Guid.Empty)
             {
-                _logger.Debug($"[{_inherenceService.AccountId}]: {nameof(GetPersonRegistrationGuid)}, person Guid not found in DB, getting from FacesService...");
+                _logger.Debug($"[{_inherenceService.AccountId}]: {nameof(GetPersonRegistrationGuid)}, person Guide not found in DB, getting from FacesService...");
                 Person person = (await _facesService.GetPersons(personGroupId).ConfigureAwait(false))
                     .FirstOrDefault(p => p.UserData.Equals(registrationKey, StringComparison.InvariantCultureIgnoreCase));
                 if (person != null)

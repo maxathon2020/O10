@@ -230,9 +230,10 @@ class App extends Component<MyProps, MyState>{
   }
 
   componentDidMount(){
-    let signalR = new SignalRClass();
-    signalR.initializeHub();
-    this.state.data.signalR = signalR;
+    let data = this.state.data;
+    data.signalR = new SignalRClass();
+    data.signalR.initializeHub();
+    this.setState({data});
     this.initializeHandler();
     this.initializeAccounts();
   }
