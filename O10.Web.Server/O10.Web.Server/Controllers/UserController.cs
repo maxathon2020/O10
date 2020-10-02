@@ -156,7 +156,7 @@ namespace O10.Web.Server.Controllers
                                 userAttributeScheme.AssociatedAttributes.Add(new UserAssociatedAttributeDto
                                 {
                                     Alias = (rootAttributeDefinition.AttributeName == associatedAttribute.AttributeSchemeName ? rootAttributeDefinition : attributeDefinitions.FirstOrDefault(a => a.AttributeName == associatedAttribute.AttributeSchemeName))?.Alias,
-                                    SchemeName = associatedAttribute.AttributeSchemeName,
+                                    AttributeName = associatedAttribute.AttributeSchemeName,
                                     Content = associatedAttribute.Content
                                 });
                             }
@@ -760,7 +760,7 @@ namespace O10.Web.Server.Controllers
                 .Select(
                     a => new UserAssociatedAttributeDto
                     {
-                        SchemeName = a.SchemeName,
+                        AttributeName = a.SchemeName,
                         Alias = a.Alias,
                         Content = ResolveValue(associatedAttributes, a.SchemeName, string.Empty)
                     }));
@@ -781,7 +781,7 @@ namespace O10.Web.Server.Controllers
         [HttpPost("UserAssociatedAttributes")]
         public IActionResult UpdateUserAssociatedAttributes(long accountId, string issuer, [FromBody] UserAssociatedAttributeDto[] userAssociatedAttributeDtos)
         {
-            _dataAccessService.UpdateUserAssociatedAttributes(accountId, issuer, userAssociatedAttributeDtos.Select(a => new Tuple<string, string>(a.SchemeName, a.Content)));
+            _dataAccessService.UpdateUserAssociatedAttributes(accountId, issuer, userAssociatedAttributeDtos.Select(a => new Tuple<string, string>(a.AttributeName, a.Content)));
 
             return Ok();
         }
