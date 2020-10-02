@@ -877,7 +877,8 @@ class User3 extends Component<MyProps, MyState>{
           }
           data.userAttributesPrev.push({
             rootAssetId: element.rootAssetId, 
-            issuerName: element.issuerName
+            issuerName: element.issuerName,
+            userAttributeId: element.rootAttributes.find(i => !i.isOverriden).userAttributeId
           })
         })
         this.setState({data});
@@ -1454,7 +1455,7 @@ class User3 extends Component<MyProps, MyState>{
     data.identityAccounts.forEach(idacc=>{
       data.userAttributesPrev.forEach((atacc, key)=>{
         if(atacc.issuerName==idacc.accountInfo){
-          data.userAttributesPrev[key].accountId = idacc.accountId
+          data.userAttributesPrev[key].accountId = atacc.userAttributeId
         }
       })
     })

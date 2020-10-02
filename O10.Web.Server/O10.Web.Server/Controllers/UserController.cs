@@ -139,6 +139,30 @@ namespace O10.Web.Server.Controllers
                             }, TaskScheduler.Default).ConfigureAwait(false);
                     }
                     userAttributeScheme.RootAttributes.Add(await GetUserAttributeDto(rootAttribute).ConfigureAwait(false));
+
+                    var associatedAttributesGrouped = _dataAccessService.GetUserAssociatedAttributes(accountId).GroupBy(a => a.Source);
+
+                    foreach (var group in associatedAttributesGrouped)
+                    {
+                        string associatedIssuer = group.Key;
+                        string issuerName = await _schemeResolverService.ResolveIssuer(associatedIssuer).ConfigureAwait(false);
+                        var rootAttributeDefinition = await _assetsService.GetRootAttributeSchemeName(associatedIssuer).ConfigureAwait(false);
+                        var attributeDefinitions = await _assetsService.GetAssociatedAttributeSchemeNames(associatedIssuer).ConfigureAwait(false);
+
+                        foreach (var associatedAttribute in group)
+                        {
+                            if (associatedAttribute.RootAssetId?.Equals32(rootAttribute.AssetId) ?? false)
+                            {
+                                userAttributeScheme.AssociatedAttributes.Add(new UserAssociatedAttributeDto
+                                {
+                                    Alias = (rootAttributeDefinition.AttributeName == associatedAttribute.AttributeSchemeName ? rootAttributeDefinition : attributeDefinitions.FirstOrDefault(a => a.AttributeName == associatedAttribute.AttributeSchemeName))?.Alias,
+                                    SchemeName = associatedAttribute.AttributeSchemeName,
+                                    Content = associatedAttribute.Content
+                                });
+                            }
+                        }
+                    }
+
                 }
             }
 
@@ -920,6 +944,7 @@ namespace O10.Web.Server.Controllers
                 }
 
                 byte[] blindingPointRootToRoot = null;
+                byte[] masterRootAttributeId = null;
 
                 if (attributesIssuanceRequest.MasterRootAttributeId != null)
                 {
@@ -927,6 +952,7 @@ namespace O10.Web.Server.Controllers
                     var rootAttributeMaster = _dataAccessService.GetUserRootAttribute(attributesIssuanceRequest.MasterRootAttributeId.Value);
                     byte[] blindingPointRoot = _assetsService.GetBlindingPoint(await persistency.BindingKeySource.Task.ConfigureAwait(false), rootAttributeMaster.AssetId);
                     blindingPointRootToRoot = _assetsService.GetCommitmentBlindedByPoint(rootAttributeMaster.AssetId, blindingPointRoot);
+                    masterRootAttributeId = rootAttributeMaster.AssetId;
                 }
                 else
                 {
@@ -984,14 +1010,17 @@ namespace O10.Web.Server.Controllers
                     .ReceiveJson<IEnumerable<AttributeValue>>()
                     .ConfigureAwait(false);
 
-                var attributeValue = attributeValues.FirstOrDefault(v => v.Definition.IsRoot);
+                var rootAttributeValue = attributeValues.FirstOrDefault(v => v.Definition.IsRoot);
 
-                if (attributeValue != null)
+                if (attributesIssuanceRequest.MasterRootAttributeId == null && rootAttributeValue != null)
                 {
-                    _dataAccessService.AddNonConfirmedRootAttribute(accountId, attributeValue.Value, issuer, attributeValue.Definition.AttributeName, rootAssetId);
+                    _dataAccessService.AddNonConfirmedRootAttribute(accountId, rootAttributeValue.Value, issuer, rootAttributeValue.Definition.AttributeName, rootAssetId);
                 }
 
-                _dataAccessService.UpdateUserAssociatedAttributes(accountId, issuer, attributeValues.Where(a => !a.Definition.IsRoot).Select(a => new Tuple<string, string>(a.Definition.AttributeName, a.Value)));
+                _dataAccessService.UpdateUserAssociatedAttributes(accountId,
+                                                                  issuer,
+                                                                  attributeValues.Where(a => attributesIssuanceRequest.MasterRootAttributeId != null || !a.Definition.IsRoot).Select(a => new Tuple<string, string>(a.Definition.AttributeName, a.Value)),
+                                                                  masterRootAttributeId ?? rootAssetId);
 
                 return Ok(attributeValues);
 
