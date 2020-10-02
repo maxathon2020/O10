@@ -9,28 +9,26 @@ import AccountsAPI from '../shared/accountsAPI';
 
 class DataClass {
 
-  private _serviceProviderSelected: string="";
-
-  public get serviceProviderSelected():string{
-    return this._serviceProviderSelected
-  }
-
-  public set serviceProviderSelected(value:string){
-    this._serviceProviderSelected = value;
-  }
-
-  private _serviceProviderList: {[key: string]: any}[] = [
-    {
-      
-    }
+  private _serviceProviders:{[key: string]:any}[] = [
+    {"accountId":6,"accountType":3,"accountInfo":"a","password":null,"publicViewKey":"6D15DDFAA8ACB732F6DD43E59B00D381BE1B21563E215EABB94B0A310C6EA79F","publicSpendKey":"629194629C67354B9E67E3D14CA62A88E30D3FEDA9D247205EFCD9DEAB7E3F9E"},{"accountId":9,"accountType":3,"accountInfo":"asdfsdf","password":null,"publicViewKey":"F4CD80814EEB122744892BE0FB8A402C5C3ACF22C19B277C59DE68A8F5FEBDAC","publicSpendKey":"6B4F3C49C291E0579BB4277729767CB71EA138D88B745FC047673533E74EDC97"},{"accountId":10,"accountType":3,"accountInfo":"asdfasdf","password":null,"publicViewKey":"17ABEA2305FA6820E3CAE3408B648EC030CFF38F916F971323B01DD90259CA37","publicSpendKey":"B2462C1DE5BBC06DD41EE641B20274FEE60F27BEDF6C72FD862CE8D30751C1B4"}
   ];
 
-  public get serviceProviderList(): {[key: string]: any}[]{
-    return this._serviceProviderList
+  get serviceProviders():{[key:string]:any}[]{
+    return this._serviceProviders;
   }
 
-  public set serviceProviderList(value: {[key: string]: any}[]){
-    this._serviceProviderList = value;
+  set serviceProviders(value:{[key:string]:any}[]){
+    this._serviceProviders = value;
+  }
+
+  private _identityRootSelected: string="";
+
+  public get identityRootSelected():string{
+    return this._identityRootSelected
+  }
+
+  public set identityRootSelected(value:string){
+    this._identityRootSelected = value;
   }
 
   private _userAttributesPrev: {[key: string]: any}[] = [];
@@ -41,6 +39,16 @@ class DataClass {
 
   public set userAttributesPrev(value: {[key: string]: any}[]){
     this._userAttributesPrev = value;
+  }
+
+  private _selectedService: string;
+  
+  public get selectedService():string{
+    return this._selectedService;
+  }
+
+  public set selectedService(value:string){
+    this._selectedService = value;
   }
 
   private _publicSpendKey: string;
@@ -417,7 +425,14 @@ interface Authenticate{
 
 
 
-
+interface ServiceProviders{
+  accountId:number,
+  accountType:number,
+  accountInfo:string,
+  password:string,
+  publicViewKey:string,
+  publicSpendKey:string
+}
 
 
 interface SchematicAttribute{
@@ -556,6 +571,7 @@ class User3 extends Component<MyProps, MyState>{
 
   componentDidMount(){
     console.log("crypto.randomBytes(16).toString('hex');", crypto.randomBytes(16).toString('hex'))
+    // this.getServiceProviders();
     // crypto
     // var mykey = crypto.createCipher('aes-128-cbc', 'mypassword');
     // var mystr = mykey.update('abc', 'utf8', 'hex')
@@ -564,7 +580,16 @@ class User3 extends Component<MyProps, MyState>{
     // console.log(mystr);
   }
 
-
+  getServiceProviders = () => {
+    let data = this.state.data;
+    axios.get<ServiceProviders[]>('http://localhost:5003/api/accounts?ofTypeOnly=2')
+    .then(resolve=>{
+      data.serviceProviders = resolve.data;
+    })
+    .catch(error=>{
+      console.log("value of error: ", error);
+    })
+  }
 
   componentDidUpdate(prevState:any, prevProps:any){
     // if(this.state.data!=undefined && prevState.data!=undefined){
@@ -1137,8 +1162,9 @@ class User3 extends Component<MyProps, MyState>{
               data.pulledIdentity = false;
               data.publicViewKey = "";
               data.providerSelectedName = ""
+              data.selectedService = ""; 
               data.identityAccounts = [];
-              data.serviceProviderSelected = "";
+              data.identityRootSelected = "";
               data.userAttributesPrev = [];
               this.setState({data});
             }}
@@ -1528,7 +1554,7 @@ class User3 extends Component<MyProps, MyState>{
                 let data = this.state.data;
                 data.inputSchematics = [];
                 console.log("value of account and publicKey: ", account)
-                data.serviceProviderSelected = "";
+                data.identityRootSelected = "";
                 data.issuerPublicKey = account.publicSpendKey;
                 data.providerSelectedName = account.accountInfo;
                 await this.setState({data});
@@ -1574,21 +1600,21 @@ class User3 extends Component<MyProps, MyState>{
     //   issuerName: element.issuerName
     // })
     let data = this.state.data;
-    if(data.loggedIn){
-      let serviceList = data.userAttributesPrev.map((attr, key)=>{
+    if(data.loggedIn && data.userAttributesPrev.length>0){
+      let providerList = data.userAttributesPrev.map((attr, key)=>{
         return(
           <div>
             <div
               className='button'  
               style={{
                 marginBottom: '5px',
-                background: data.serviceProviderSelected==attr.rootAssetId?"green":"black"
+                background: data.identityRootSelected==attr.rootAssetId?"green":"black"
               }}
               onClick={()=>{
-                if(data.serviceProviderSelected==attr.rootAssetId){
-                  data.serviceProviderSelected="";
+                if(data.identityRootSelected==attr.rootAssetId){
+                  data.identityRootSelected="";
                 }else{
-                  data.serviceProviderSelected=attr.rootAssetId;
+                  data.identityRootSelected=attr.rootAssetId;
                 }
                 data.providerSelectedName="";
                 this.setState({data});
@@ -1622,17 +1648,111 @@ class User3 extends Component<MyProps, MyState>{
           >
             Select from Registered Providers to Find a Service
           </div>
-          {serviceList}
+          {providerList}
         </div>
       );
     }
   }
 
+
+  serviceProviderList = () => {
+    let data = this.state.data;
+    let target = ""
+    const registerService = () => {
+      axios.post("http://localhost:5003/api/User/UniversalProofs?accountId="+data.selectedService, {
+        rootAttributeId: data.identityRootSelected,
+        target, 
+        sessionKey: "1", 
+        serviceProviderInfo: data.selectedService
+      })
+      .then(resolve=>{
+        console.log("value of resolve: ", resolve);
+      })
+      .catch(error=>{
+        console.log("value of error: ", error);
+      })
+    }
+    let serviceList = data.serviceProviders.map((serv, key)=>{
+      return(
+        <div
+          key={key}
+          className="button"
+          style={{
+            marginBottom: '5px', 
+            background: data.selectedService==serv.accountId?"green":"black"
+          }}
+          onClick={()=>{
+            console.log("value of selectedService: ", this.state.data.selectedService);
+            console.log("value of serv.accountId: ", serv.accountId);
+            console.log("value of selectedService==serv.accountId: ", this.state.data.selectedService==serv.accountId)
+            let data = this.state.data;
+            if(data.selectedService==serv.accountId){
+              target = ""
+              data.selectedService = "";
+            }else{
+              data.selectedService = serv.accountId.toString();
+              target = serv.publicSpendKey;
+            }
+            this.setState({data});
+          }}
+        >
+          {serv.accountInfo}
+          <br/>
+        </div>
+      );
+    })
+
+    return(
+      <div>
+        <div
+          style={{
+            textAlign: 'center', 
+            background: 'blue',
+            maxHeight: '50vh', 
+            overflow: 'auto', 
+            marginTop: '5px', 
+            paddingTop: '5px', 
+            paddingBottom: '5px'
+          }}
+        >
+          <div
+            style={{
+              marginBottom: "5px",
+              marginTop: '5px', 
+              color: "white"
+            }}
+          >
+            Select a Service Provider to Register With
+          </div>
+          <div>
+            {serviceList}
+          </div>
+          <div
+            className="button"
+            style={{
+              marginTop: '20px', 
+              marginBottom: '5px'
+            }}
+            onClick={()=>{
+              if(data.selectedService!=''){
+                registerService();
+              }
+            }}
+          >
+              Register
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   pageSwitch = () => {
     let data = this.state.data;
-    if(data.serviceProviderSelected!=""){
+    if(data.identityRootSelected!=""){
       return(
-        <div></div>
+        <div>
+          {this.serviceProviderList()}
+        </div>
       )
     }else{
       return(
