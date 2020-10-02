@@ -7,6 +7,7 @@ namespace O10.Web.Server.Dtos.User
         public UserAttributeSchemeDto()
         {
             RootAttributes = new List<UserAttributeDto>();
+            AssociatedAttributes = new List<UserAssociatedAttributeDto>();
         }
 
         public AttributeState State { get; set; }
@@ -17,5 +18,6 @@ namespace O10.Web.Server.Dtos.User
         public string SchemeName { get; set; }
         public List<UserAttributeDto> RootAttributes { get; set; }
 
+        public List<UserAssociatedAttributeDto> AssociatedAttributes { get; set; }
     }
 }
