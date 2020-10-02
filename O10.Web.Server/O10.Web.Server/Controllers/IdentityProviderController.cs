@@ -424,6 +424,9 @@ namespace O10.Web.Server.Controllers
             _logger.LogIfDebug(() => $"&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&");
             _logger.LogIfDebug(() => $"before RequestForIssuance");
             _logger.LogIfDebug(() => $"value of issuancedtails: {issuanceDetails}");
+            _logger.LogIfDebug(() => $"value of issuancedtails: {issuanceDetails.Content}");
+            _logger.LogIfDebug(() => $"value of issuancedtails: {issuanceDetails.AttributeName}");
+            _logger.LogIfDebug(() => $"value of issuancedtails: {issuanceDetails.OriginatingCommitment}");   
             _logger.LogIfDebug(() => $"&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&");
 
             await _idenitiesHubContext.Clients.Group(account.AccountId.ToString()).SendAsync("RequestForIssuance", issuanceDetails);
