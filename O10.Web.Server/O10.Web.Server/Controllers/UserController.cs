@@ -924,7 +924,7 @@ namespace O10.Web.Server.Controllers
         [HttpPost("AttributesIssuance")]
         public async Task<IActionResult> RequestForAttributesIssuance(long accountId, [FromBody] AttributesIssuanceRequestDto attributesIssuanceRequest)
         {
-            _logger.Info("RequestForAttributesIssuance started");
+            _logger.Debug("RequestForAttributesIssuance started");
 
             try
             {

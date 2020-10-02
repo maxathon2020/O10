@@ -376,10 +376,7 @@ namespace O10.Web.Server.Controllers
         [HttpPost("IssueIdpAttributes/{issuer}")]
         public async Task<ActionResult<IEnumerable<AttributeValue>>> IssueIdpAttributes(string issuer, [FromBody] IssueAttributesRequestDTO request)
         {
-            _logger.LogIfDebug(() => $"&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&");
-            _logger.LogIfDebug(() => $"INSIDE IssueIdpAttributes");
-            _logger.LogIfDebug(() => $"&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&");
-
+            _logger.Debug("INSIDE ISSUEIDPATTRIBUTES");
             if (request is null)
             {
                 throw new ArgumentNullException(nameof(request));
