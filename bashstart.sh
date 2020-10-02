@@ -1,8 +1,10 @@
 #!/bin/bash
 
 git add . 
+git commit -m 'debug changes'
+git push origin peterdebugserver
 sudo docker-compose down
 sudo docker-compose pull 
-sudo docker-compose up -d
-sudo docker-image prune 
+sudo docker-image prune
+sudo docker-compose up 
 
