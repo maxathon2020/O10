@@ -1,5 +1,4 @@
-import { inherits } from "util";
-import { DemoAccount, DemoIdpAccount } from "./demoConfig";
+import { DemoAccount } from "./demoConfig";
 import SignalRClass from "./signalR";
 
 export class DemoAccountState {
@@ -70,6 +69,20 @@ export interface IdentityIssuance {
     associatedAttributes: AssociatedAttributeIssuance[];
 }
 
+export class DemoSpAccountState extends DemoAccountState {
+    initializeSignalR() {
+        this.initializeSignalRHub().then(
+            h => {
+                h.on("PushUserRegistration", (i) => {
+                    console.info("PushUserRegistration");
+                    console.info(i);
+
+                });
+            }, 
+            e => console.error("Failed to initialize SignalR hub", e));
+    }
+}
+
 export class DemoState {
     private _idpAccountStates: DemoIdPAccountState[] = new Array();
     public get idpAccountStates(): DemoIdPAccountState[] {
@@ -77,5 +90,13 @@ export class DemoState {
     }
     public set idpAccountStates(value: DemoIdPAccountState[]) {
         this._idpAccountStates = value;
+    }
+
+    private _spAccountStates: DemoSpAccountState[] = new Array();
+    public get spAccountStates(): DemoSpAccountState[] {
+        return this._spAccountStates;
+    }
+    public set spAccountStates(value: DemoSpAccountState[]) {
+        this._spAccountStates = value;
     }
 }

@@ -1434,16 +1434,24 @@ afterTokenApproval = () => {
     console.log("value of data.identityPayload.length: ", data.identityPayload.length);
     console.log("value of data.identityPayload; ", data.identityPayload);
     if(data.identityPayload.length>0){
-      asyncForEach(data.identityPayload, async(payload:any)=>{
+      for(const payload of data.identityPayload){
         data.symbol = payload.symbol;
         data.itemProperties = payload.properties;
         data.itemMetadata = payload.name + "@@@" + payload.alias;
-        await this.setState({data}, async()=>{
-          await this.createWalletsHandler();
-          await this.createTokenHandler();
-          await sleep(1000);
-        })
-      })
+        await this.setState({data})
+        // await this.createWalletsHandler();
+        await this.createTokenHandler();
+      }
+      // asyncForEach(data.identityPayload, async(payload:any)=>{
+      //   data.symbol = payload.symbol;
+      //   data.itemProperties = payload.properties;
+      //   data.itemMetadata = payload.name + "@@@" + payload.alias;
+      //   await this.setState({data}, async()=>{
+      //     // await this.createWalletsHandler();
+      //     await this.createTokenHandler();
+      //     await sleep(1000);
+      //   })
+      // })
       this.identityCallback(data.trxReceipt);
     }
   }

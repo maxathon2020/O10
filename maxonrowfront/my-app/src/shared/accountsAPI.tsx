@@ -35,16 +35,16 @@ export default class AccountsAPI{
         return accounts;
     }
 
-    async register(accountType: number, accountInfo: string, password: string) {
-        return await Axios.post<AccountDTO>(this.baseUri + "/api/accounts/register", {accountType, accountInfo, password});
+    register(accountType: number, accountInfo: string, password: string) {
+        return Axios.post<AccountDTO>(this.baseUri + "/api/accounts/register", {accountType, accountInfo, password});
     }
 
-    async authenticate(accountId: number, password: string) {
-        return await Axios.post<AccountDTO>(this.baseUri + "/api/accounts/authenticate", {accountId, password});
+    authenticate(accountId: number, password: string) {
+        return Axios.post<AccountDTO>(this.baseUri + "/api/accounts/authenticate", {accountId, password});
     }
 
-    async storeMnemonic(accountId: number, mne: string) {
-        return await Axios.post<Map<string, string>>(this.baseUri + "/api/accounts/KeyValues?accountId=" + accountId, { mxwMnemonic: mne });
+    storeMnemonic(accountId: number, mne: string) {
+        return Axios.post<Map<string, string>>(this.baseUri + "/api/accounts/KeyValues?accountId=" + accountId, { mxwMnemonic: mne });
     }
 
     async getMnemonic(accountId: number) {

@@ -25,8 +25,9 @@ import ProviderOrSignerRequest from './shared/initialize';
 import { Provider } from 'mxw-sdk-js/dist/providers';
 import './css/main.css';
 import Axios from 'axios';
-import { DemoIdPAccountState, DemoState } from './shared/demoAccountState';
+import { DemoIdPAccountState, DemoSpAccountState, DemoState } from './shared/demoAccountState';
 import { debug } from 'console';
+import { Subject } from '@microsoft/signalr';
 
 
 class DataClass{
@@ -43,21 +44,6 @@ class DataClass{
   }
   public set demoState(value: DemoState) {
     this._demoState = value;
-  }
-
-  private _idpAccounts: DemoIdPAccountState[] = new Array();
-  public get idpAccounts(): DemoIdPAccountState[] {
-    return this._idpAccounts;
-  }
-  public set idpAccounts(value: DemoIdPAccountState[]) {
-    this._idpAccounts = value;
-  }
-  private _spAccounts: DemoAccount[] = new Array();
-  public get spAccounts(): DemoAccount[] {
-    return this._spAccounts;
-  }
-  public set spAccounts(value: DemoAccount[]) {
-    this._spAccounts = value;
   }
 
   // //kyc-prov-1
@@ -236,106 +222,122 @@ class App extends Component<MyProps, MyState>{
     this.initializeAccounts();
   }
 
-  initializeAccounts() {
+  async initializeAccounts() {
     console.info("Starting demo IdP accounts initialization");
-    let data = this.state.data;
-    this.accountsApi.get(1).then(r => {
+    await this.accountsApi.get(1).then(r => {
       r.forEach(a => {        
         var demoIdpAccount = demoConfig.idpAccounts.find(v => v.accountName == a.accountInfo);
-        if(demoIdpAccount) {
+        if(demoIdpAccount) {  
           demoIdpAccount.account = a;
         }
       });
-
-      demoConfig.idpAccounts.forEach(async d => {
-        await this.initializeDemoAccount(d);
-
-        const demoIdpAccountState = new DemoIdPAccountState();
-        demoIdpAccountState.demoAccount = d;
-        demoIdpAccountState.initializeSignalR();
-
-        data.demoState.idpAccountStates.push(demoIdpAccountState);
-        await this.setState({data});
-        console.info("Initializing scheme for the Demo Account " + d.accountName);
-        let scheme = await this.initializeScheme(d);
-        console.log(scheme);
-      });
     })
-  
+
+    for (const d of demoConfig.idpAccounts) {
+      await this.initializeDemoAccount(d);
+      let data = this.state.data;
+
+      const demoIdpAccountState = new DemoIdPAccountState();
+      demoIdpAccountState.demoAccount = d;
+      demoIdpAccountState.initializeSignalR();
+
+      data.demoState.idpAccountStates.push(demoIdpAccountState);
+      await this.setState({data});
+      console.info("Initializing scheme for the Demo Account " + d.accountName);
+      let scheme = await this.initializeScheme(d);
+      console.log(scheme);
+    }
+
     console.info("Starting demo SP accounts initialization");
-    this.accountsApi.get(2).then(r => {
+
+    await this.accountsApi.get(2).then(r => {
       r.forEach(a => {        
         var demoSpAccount = demoConfig.spAccounts.find(v => v.accountName == a.accountInfo);
         if(demoSpAccount) {
           demoSpAccount.account = a;
         }
       });
-
-      demoConfig.spAccounts.forEach(async d => {
-        await this.initializeDemoAccount(d);
-        this.state.data.spAccounts.push(d);
-
-        await this.initializeAttributeValidation(d);
-      });
     });
-  }
+
+    for (const d of demoConfig.spAccounts) {
+      await this.initializeDemoAccount(d);
+
+      const demoSpAccountState = new DemoSpAccountState();
+      demoSpAccountState.demoAccount = d;
+      demoSpAccountState.initializeSignalR();
+
+      this.state.data.demoState.spAccountStates.push(demoSpAccountState);
+
+      await this.initializeAttributeValidation(d);
+    }
+}
 
   private async initializeDemoAccount(d: DemoAccount) {
     console.info("Initializing demo account " + d.accountName);
+
     if (!d.account) {
-      console.info("Need to register O10 account and whitelist MXW wallet");
+      console.info("Need to register O10 account " + d.accountName + "and whitelist MXW wallet");
       await this.accountsApi.register(d.accountType, d.accountName, "qqq").then(
         a => {
-          d.account = a;
-          this.whitelistWallet(null).then(
-            w => {
-              this.accountsApi.storeMnemonic(d.account.accountId, w.mnemonic).then(kvs => console.log(kvs), e => console.log("Failed to store mnemonic: " + e));
+          d.account = a.data;
+          console.info("Whitelisting MXW wallet of the demo account " + d.accountName);
+          // this.whitelistWallet(null).then(
+          //   w => {
+          //     console.info("Storing mnemonic of the demo account " + d.accountName);
+          //     this.accountsApi.storeMnemonic(d.account.accountId, w.mnemonic).then(kvs => console.log(kvs), e => console.log("Failed to store mnemonic: " + e));
 
-              d.wallet = w;
-            },
-            e => {
-              console.error("Failed to whitelist wallet, " + e);
-            }
-          );
+          //     d.wallet = w;
+          //   },
+          //   e => {
+          //     console.error("Failed to whitelist MSX wallet of the demo account " + d.accountName, e);
+          //   }
+          // );
         },
         e => { console.log("Failed to register account. " + e); }
       );
-    } else {
-      console.info("Demo account '" + d.accountName + "' has O10 account registered. Checking for whitelisted MXW wallet");
-      let mne = await this.accountsApi.getMnemonic(d.account.accountId);
+    } 
+    
+    console.info("Checking for whitelisted MXW wallet of " + d.accountName);
+    let mne = await this.accountsApi.getMnemonic(d.account.accountId);
 
-      let isMne: boolean = !!mne;
+    let isMne: boolean = !!mne;
 
-      if (isMne) {
-        console.info("There is stored mnemonic");
-        let wallet = await this.getWallet(mne);
-        if (await wallet.isWhitelisted()) {
-          console.info("MXW wallet is already whitelisted");
-          d.wallet = wallet;
-        } else {
-          console.info("MXW wallet exist but not whitelisted");
-          d.wallet = await this.whitelistWallet(wallet);
-          this.accountsApi.storeMnemonic(d.account.accountId, d.wallet.mnemonic).then(kvs => console.log(kvs), e => console.log("Failed to store mnemonic: " + e));
-        }
+    if (isMne) {
+      console.info(d.accountName + " has stored mnemonic");
+      let wallet = this.getWallet(mne);
+      if (await wallet.isWhitelisted()) {
+        console.info("MXW wallet of " + d.accountName + " is already whitelisted");
+        d.wallet = wallet;
       } else {
-        console.info("No stored mnemonic found. Creating new MXW wallet.");
-        d.wallet = await this.whitelistWallet(null);
-
-        console.info("MXW wallet for the demo account " + d.accountName + " crated and whitelisted. Storing its mnemonic");
-        this.accountsApi.storeMnemonic(d.account.accountId, d.wallet.mnemonic).then(
-          kvs => {
-            console.log("KeyValues are: " + kvs);
-          },
-          e => console.log("Failed to store mnemonic: " + e));
+        console.info("MXW wallet of " + d.accountName + " exist but not whitelisted");
+        await this.whitelistWallet(wallet).then(w => {
+          d.wallet = w;
+          console.info("Storing mnemonic of the demo account " + d.accountName);
+          this.accountsApi.storeMnemonic(d.account.accountId, d.wallet.mnemonic).then(kvs => console.log(kvs), e => console.log("Failed to store mnemonic: " + e));
+        },
+        e => {
+          console.error("Failed to whitelist MSX wallet of the demo account " + d.accountName, e);
+        })
       }
+    } else {
+      console.info("No stored mnemonic found for " + d.accountName + ". Creating new MXW wallet.");
+      d.wallet = await this.whitelistWallet(null);
+
+      console.info("MXW wallet for the demo account " + d.accountName + " crated and whitelisted. Storing its mnemonic");
+      this.accountsApi.storeMnemonic(d.account.accountId, d.wallet.mnemonic).then(
+        kvs => {
+          console.log("KeyValues are: " + kvs);
+        },
+        e => console.log("Failed to store mnemonic: " + e));
     }
+    
 
     console.info("Authenticating demo account " + d.accountName);
     await this.accountsApi.authenticate(d.account.accountId, "qqq");
     console.info("Demo account " + d.accountName + " authenticated");
   }
 
-  async getWallet(mne: string) {
+  getWallet(mne: string) {
     return this.state.data.Wallets.getWallet(mne);
   }
 
