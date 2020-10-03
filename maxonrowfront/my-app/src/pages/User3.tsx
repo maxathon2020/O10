@@ -9,9 +9,7 @@ import AccountsAPI from '../shared/accountsAPI';
 
 class DataClass {
 
-  private _serviceProviders:{[key: string]:any}[] = [
-    {"accountId":6,"accountType":3,"accountInfo":"a","password":null,"publicViewKey":"6D15DDFAA8ACB732F6DD43E59B00D381BE1B21563E215EABB94B0A310C6EA79F","publicSpendKey":"629194629C67354B9E67E3D14CA62A88E30D3FEDA9D247205EFCD9DEAB7E3F9E"},{"accountId":9,"accountType":3,"accountInfo":"asdfsdf","password":null,"publicViewKey":"F4CD80814EEB122744892BE0FB8A402C5C3ACF22C19B277C59DE68A8F5FEBDAC","publicSpendKey":"6B4F3C49C291E0579BB4277729767CB71EA138D88B745FC047673533E74EDC97"},{"accountId":10,"accountType":3,"accountInfo":"asdfasdf","password":null,"publicViewKey":"17ABEA2305FA6820E3CAE3408B648EC030CFF38F916F971323B01DD90259CA37","publicSpendKey":"B2462C1DE5BBC06DD41EE641B20274FEE60F27BEDF6C72FD862CE8D30751C1B4"}
-  ];
+  private _serviceProviders:{[key: string]:any}[] = []
 
   get serviceProviders():{[key:string]:any}[]{
     return this._serviceProviders;
@@ -582,13 +580,17 @@ class User3 extends Component<MyProps, MyState>{
 
   getServiceProviders = () => {
     let data = this.state.data;
-    axios.get<ServiceProviders[]>('http://localhost:5003/api/accounts?ofTypeOnly=2')
-    .then(resolve=>{
-      data.serviceProviders = resolve.data;
-    })
-    .catch(error=>{
-      console.log("value of error: ", error);
-    })
+    if(data.serviceProviders.length==0){
+      axios.get<ServiceProviders[]>('http://localhost:5003/api/accounts?ofTypeOnly=2')
+      .then(resolve=>{
+        data.serviceProviders = resolve.data;
+        this.setState({data});
+      })
+      .catch(error=>{
+        console.log("value of error: ", error);
+      })
+    }
+    return(<div/>)
   }
 
   componentDidUpdate(prevState:any, prevProps:any){
@@ -1782,6 +1784,7 @@ class User3 extends Component<MyProps, MyState>{
               width: "100%"
             }}
           >
+            {this.getServiceProviders()}
             {this.userNamePassword()}
             {/* {this.requestUserAttributes()} */}
             {this.availableIdentityProviders()}

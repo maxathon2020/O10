@@ -27,12 +27,12 @@ export class DemoAccountState {
 
 export class DemoIdPAccountState extends DemoAccountState {
 
-    private _idenitityIssuances: IdentityIssuance[] = new Array();
-    public get idenitityIssuances(): IdentityIssuance[] {
-        return this._idenitityIssuances;
+    private _identityIssuances: IdentityIssuance[] = new Array();
+    public get identityIssuances(): IdentityIssuance[] {
+        return this._identityIssuances;
     }
-    public set idenitityIssuances(value: IdentityIssuance[]) {
-        this._idenitityIssuances = value;
+    public set identityIssuances(value: IdentityIssuance[]) {
+        this._identityIssuances = value;
     }
 
     initializeSignalR() {
@@ -43,7 +43,8 @@ export class DemoIdPAccountState extends DemoAccountState {
                     console.info(i);
 
                     var identityIssuance  = i as IdentityIssuance;
-                    this._idenitityIssuances.push(identityIssuance);
+                    this._identityIssuances.push(identityIssuance);
+                    console.log("value of this.identityIssuances: ", this.identityIssuances);
                 });
             }, 
             e => console.error("Failed to initialize SignalR hub", e));

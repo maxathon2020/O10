@@ -238,6 +238,7 @@ class App extends Component<MyProps, MyState>{
 
   initializeAccounts() {
     console.info("Starting demo IdP accounts initialization");
+    let data = this.state.data;
     this.accountsApi.get(1).then(r => {
       r.forEach(a => {        
         var demoIdpAccount = demoConfig.idpAccounts.find(v => v.accountName == a.accountInfo);
@@ -253,8 +254,8 @@ class App extends Component<MyProps, MyState>{
         demoIdpAccountState.demoAccount = d;
         demoIdpAccountState.initializeSignalR();
 
-        this.state.data.demoState.idpAccountStates.push(demoIdpAccountState);
-
+        data.demoState.idpAccountStates.push(demoIdpAccountState);
+        await this.setState({data});
         console.info("Initializing scheme for the Demo Account " + d.accountName);
         let scheme = await this.initializeScheme(d);
         console.log(scheme);

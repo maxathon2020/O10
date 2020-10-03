@@ -14,14 +14,86 @@ import Minter from '../nft/minter';
 import * as crypto from "crypto";
 import { DemoIdPAccountState, DemoState } from '../shared/demoAccountState';
 
+async function asyncForEach(array:any, callback:any) {
+  for (let index = 0; index < array.length; index++) {
+    await callback(array[index], index, array);
+  }
+}
+
+function sleep(ms:number) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+
 class DataClass{
-  private _selectedDemoIdpAccount: DemoIdPAccountState;
+
+  private _afterToken: string = "";
+  private _afterApproval: string = "";
+  private _accArray:{[key:string]:any}[] = []
+
+  private _userMintReceipts: {[key:string]:any}[] = [];
+
+  public set userMintReceipts(value:{[key:string]:any}[]){
+    this.userMintReceipts = value;
+  }
+  
+  public get userMintReceipts():{[key: string]: any}[]{
+    return this._userMintReceipts;
+  }
+
+  private _renderMintHandler:boolean;
+
+  public set renderMintHandler(value: boolean){
+    this._renderMintHandler=value;
+  } 
+
+  public get renderMintHandler():boolean{
+    return this._renderMintHandler
+  }
+
+  public set accArray(value:{[key:string]:any}[]){
+    this._accArray = value;
+  }
+
+  public get accArray():{[key:string]:any}[]{
+    return this._accArray;
+  }
+
+  public set afterToken(value:string){
+    this._afterToken = value;
+  }
+
+  public get afterToken():string{
+    return this._afterToken;
+  }
+
+  public set afterApproval(value:string){
+    this._afterApproval = value;
+  }
+
+  public get afterApproval():string{
+    return this._afterApproval;
+  }
+
+  private _selectedDemoIdpAccount: DemoIdPAccountState = null;
   public get selectedDemoIdpAccount(): DemoIdPAccountState {
     return this._selectedDemoIdpAccount;
   }
   public set selectedDemoIdpAccount(value: DemoIdPAccountState) {
     this._selectedDemoIdpAccount = value;
   }
+
+
+  public _accountArray:{[key:string]:any}[] = [];
+
+  public set accountArray(value: {[key: string]: any}[]){
+    this._accountArray = value;
+  }
+
+  public get accountArray():{[key: string]: any}[]{
+    return this._accountArray;
+  }
+
   private _loginRegisterErrorMessage = "";
   private _trxReceipt: TransactionReceipt = null;
   private _symbol: string;
@@ -270,6 +342,19 @@ interface MyState {
   data: DataClass;
 };
 
+interface AssociatedMint{
+  assetCommitment: string,
+  attributeName: string,
+  bindingToRootCommitment: string
+}
+
+interface RootMint{
+  assetCommitment: string
+  attributeName: string
+  originatingCommitment: string
+  surjectionProof: string
+}
+
 interface SchemeItems{
   name: string,
 	description: string,
@@ -335,9 +420,37 @@ class Identity2 extends Component<MyProps, MyState>{
     })
   }
 
-  componentDidMount(){
-    console.log("value of Wallets on ComponentDidMount: ", this.props.Wallets);
+  
 
+  componentDidMount(){
+
+    let data = this.state.data;
+
+    console.log("value of Wallets on ComponentDidMount: ", this.props.Wallets);
+    console.log("demoAccountState: ", this.props.DemoState.idpAccountStates);
+
+    console.log("value of identity issuance from demoState: ", this.props.DemoState.idpAccountStates)
+
+
+    this.props.DemoState.idpAccountStates.forEach((d)=>{
+      data.accArray.push({
+        name: d.demoAccount.accountName,
+        wallet: d.demoAccount.wallet,
+        identityIssuance: d.identityIssuances
+      })
+    })
+
+    this.setState({data})
+    // var accArray:{[key:string]:any} = []
+
+    // attribute.attributeName+"@"+data.username,
+    // itemId: 
+
+    // this.props.DemoState.idpAccountStates.forEach((acc, key)=>{
+    //   accArray[key].accountId = acc.demoAccount.account.accountId;
+    //   accArray[key].accountInfo = acc.demoAccount.account.accountInfo;
+    //   acc.identityIssuances
+    // })
   }
 
   // http://localhost:5003/api/SchemeResolution/SchemeItems
@@ -410,17 +523,28 @@ class Identity2 extends Component<MyProps, MyState>{
   listOfAccounts = () => {
     let data = this.state.data;
 
+    // console.log("value of data.publicViewKey: ", data.publicViewKey);
+    // console.log("value of data.publicSpendKey: ", data.publicSpendKey);
+    // console.log("value of data.attributesSelected: ", data.attributesSelected);
+
+    // console.log("value of this.props.DemoState.idpAccountStates: ", this.props.DemoState.idpAccountStates);
+
     return this.props.DemoState.idpAccountStates.map(a => {
       return(
         <div
             className="button"
             style={{
+              background: data.selectedDemoIdpAccount==a?"green":"black",
               marginLeft: '20%', 
               marginRight: '20%', 
               width: '60%', 
               marginTop: '20px'
             }}
-            onClick={()=>{
+            onClick={async()=>{
+              let data = this.state.data;
+              data.afterToken = "";
+              data.afterApproval = "";
+              await this.setState({data})
               this.selectDemoIdpAccount(a);
             }}
           >
@@ -564,7 +688,88 @@ class Identity2 extends Component<MyProps, MyState>{
   }
   
   selectDemoIdpAccount(d: DemoIdPAccountState) {
-    this.state.data.selectedDemoIdpAccount = d;
+    let data = this.state.data;
+    data.loggedIn = true;
+    data.username = d.demoAccount.accountName;
+    data.selectedDemoIdpAccount = d;
+    this.setState({data});
+  }
+
+  showRequestIssuance = () => {
+    let data = this.state.data;
+    if(data.accArray!=[]){
+      if(data.selectedDemoIdpAccount!=null && data.accArray!=[]){
+        const assocParse =(assoc: {[key: string]: any}[])=>{
+          let returnstring = "";
+          assoc.forEach(item=>{
+            returnstring = returnstring + " " + item.attributeName;
+          })
+          return(returnstring);
+        }
+        let listShow = this.props.DemoState.idpAccountStates.map((d, key)=>{
+          console.log("value of d: ", d)
+          console.log("value of accArray: ", data.accArray);
+          if(d.demoAccount.accountName==data.selectedDemoIdpAccount.demoAccount.accountName && data.accArray[key]!=undefined && data.selectedDemoIdpAccount.identityIssuances[key]!=undefined){
+            return(
+              <div
+                style={{
+                  color: 'white',
+                  marginBottom: '5px', 
+                  marginTop: '5px',
+                  wordWrap: 'break-word'
+                }}
+              >
+                Request for issuance from public key "{data.accArray[key].wallet.signingKey.compressedPublicKey}" for root attribute token "{data.selectedDemoIdpAccount.identityIssuances[key].rootAttribute.attributeName}" with field tokens {assocParse(data.selectedDemoIdpAccount.identityIssuances[key].associatedAttributes)}
+              </div>
+            )
+          }else{      
+            return(<div></div>)
+          } 
+        })
+
+        const listShowFunc = () => {
+          if(data.accArray.length!=0){
+            return(
+              <div
+                style={{
+                  marginTop: '5px', 
+                  textAlign: 'center', 
+                  background: 'rgb(52,79,142)' 
+                }}
+              >
+                <div
+                  style={{
+                    color: 'white', 
+                    marginTop: '5px'
+                  }}
+                >
+                  Here are the tokens to be minted
+                </div>
+                <br/>
+                {listShow}
+                <br/>
+                <div
+                  className="button"
+                  style={{
+                    marginBottom: '5px'
+                  }}
+                  onClick={()=>{
+                    this.mintTokenHandler();
+                  }}
+                > 
+                  Mint Tokens
+                </div>
+              </div>
+            )
+          }else{
+            return(<div/>)
+          }
+        }
+        return(listShowFunc());
+      }else{
+        return(<div/>)
+      }
+    }
   }
 
   registerAccount = async() => {
@@ -904,7 +1109,7 @@ class Identity2 extends Component<MyProps, MyState>{
     console.log("value of data.publicViewKey: ", data.publicViewKey);
     console.log("value of data.publicSpendKey: ", data.publicSpendKey);
     console.log("value of data.attributesSelected: ", data.attributesSelected);
-    axios.put<SchemeResolution[]>("http://localhost:5003/api/SchemeResolution/AttributeDefinitions?issuer="+data.publicSpendKey, data.attributesSelected)
+    axios.put<SchemeResolution[]>("http://localhost:5003/api/SchemeResolution/AttributeDefinitions?issuer="+data.selectedDemoIdpAccount.demoAccount.account.publicSpendKey, data.attributesSelected)
     .then(resolve=>{
       console.log('value of resolve ***&&&***: ', resolve);
       data.attributesSelected.forEach(attribute=>{
@@ -919,6 +1124,8 @@ class Identity2 extends Component<MyProps, MyState>{
       data.attributesSelected = [];
       this.setState({data}, ()=>{
         console.log("after setting identityPayload and value: ", this.state.data.identityPayload);
+        this.NFTAttributes();
+        // this.identityProviderFlow()
       });
     })
     .catch(error=>{
@@ -973,61 +1180,268 @@ class Identity2 extends Component<MyProps, MyState>{
   createTokenHandler = async() => {
     let data = this.state.data;
     console.log("value of symbol: ", data.symbol);
-    const tokencreator = new TokenCreator(data.symbol, data.feeCollector, data.issuer, data.wallet, data.itemMetadata, data.itemProperties);
     try{
-        await tokencreator.create();
-        const nonFungibleToken = await tokencreator.reload(data.symbol, data.wallet);
-        const issuerNonFungibleToken = await tokencreator.reload(data.symbol, data.issuer);
-        data.nft = nonFungibleToken;
-        data.issuerNft = issuerNonFungibleToken;
-        this.setState({data}, ()=>{console.log("DATA AFTER TOKEN CREATION: ", this.state.data)});
-        try{
-            const receipt = await new Approver(data.symbol, data.provider, data.issuer, data.middleware).approve();
-            data.nft = await Util.reload(data.symbol, data.wallet);
-            data.issuerNft = await Util.reload(data.symbol, data.issuer);
-            this.setState({data}, ()=>{console.log("DATA AFTER APPROVAL: ", this.state.data)});
-        }
-        catch(e){
-            console.log("there was an error: ", e);
-        }
+      const tokencreator = new TokenCreator(data.symbol, data.feeCollector, data.issuer, data.wallet, data.itemMetadata, data.itemProperties);
+      await tokencreator.create();
+      const nonFungibleToken = await tokencreator.reload(data.symbol, data.wallet);
+      const issuerNonFungibleToken = await tokencreator.reload(data.symbol, data.issuer);
+      data.nft = nonFungibleToken;
+      data.issuerNft = issuerNonFungibleToken;
+      data.afterToken = "Here is the data after token creation: nft: "+JSON.stringify(data.nft)+" issuerNft: "+JSON.stringify(data.issuerNft);
+      this.setState({data}, ()=>{console.log("DATA AFTER TOKEN CREATION: ", this.state.data.afterToken)});
+      try{
+          const receipt = await new Approver(data.symbol, data.provider, data.issuer, data.middleware).approve();
+          data.nft = await Util.reload(data.symbol, data.wallet);
+          data.issuerNft = await Util.reload(data.symbol, data.issuer);
+          data.afterApproval = "Here is the data after token approval: nft: "+JSON.stringify(data.nft)+" issuerNft: "+JSON.stringify(data.issuerNft)+" receipt value: "+JSON.stringify(receipt)
+          this.setState({data}, ()=>{console.log("DATA AFTER APPROVAL: ", this.state.data.afterApproval)});
+      }
+      catch(e){
+          console.log("there was an error: ", e);
+      }
     }
     catch(e){
         console.log("there was an error: ", e);
     }
   }
 
-  mintTokenHandler = async() => {
+  mintAssociated = async(associated: AssociatedMint[]) => { 
+    let data = this.state.data;
+    associated.forEach(assoc=>{
+      let packageObj = {
+        symbol: assoc.attributeName+"@"+data.username,
+        itemID: assoc.assetCommitment, 
+        property: assoc.bindingToRootCommitment
+      }
+      try{
+          const minter = new Minter(packageObj.symbol, crypto.randomBytes(16).toString('hex'), packageObj.itemID, packageObj.property);
+          const trxFunc = async() =>{ 
+            let trxRec = await minter.mint(data.wallet, data.wallet.address); 
+            return trxRec;
+          }
+          let trxRec = trxFunc();
+          data.userMintReceipts.push(
+            {
+              symbol: packageObj.symbol,
+              type: 'associated',
+              trxRec,
+            }  
+          );
+      }
+      catch(e){
+          console.log("there was an error: ", e)
+      }
+    })
+    this.setState({data}, ()=>{
+      console.log("value after minting associated items", this.state.data.userMintReceipts)
+    })
+  }
+
+  mintRoot = async(root: RootMint) => {
+    let data = this.state.data;
+    let packageObj = {
+      symbol: root.attributeName+"@"+data.username, 
+      itemID: root.assetCommitment,
+      property: root.originatingCommitment+root.surjectionProof
+    }
     try{
-        let data = this.state.data;
-        console.log("value of data in mintTokenHandler: ", data);
-        console.log("value of data.wallet: ", data.wallet);
-        const minter = new Minter(data.symbol, crypto.randomBytes(16).toString('hex'), data.itemMetadata, data.itemProperties);
-        data.trxReceipt = await minter.mint(data.wallet, data.wallet.address);
-        this.setState({data}, ()=>{console.log("DATA AFTER MINTING: ", this.state.data)});
+      const minter = new Minter(packageObj.symbol, crypto.randomBytes(16).toString('hex'),packageObj.itemID, packageObj.property);
+      const trxFunc = async() =>{ 
+        let trxRec = await minter.mint(data.wallet, data.wallet.address); 
+        return trxRec;
+      }
+      let trxRec = trxFunc();
+      data.userMintReceipts.push(
+        {
+          symbol: packageObj.symbol,
+          type: 'root',
+          trxRec,
+        }  
+      );
     }
     catch(e){
         console.log("there was an error: ", e)
     }
+  }
+
+  mintTokenHandler = async() => {
+    try{
+      let data = this.state.data;
+      console.log("")
+      data.accArray.forEach(acc=>{
+        if(data.username==acc.accountName){
+          this.mintAssociated(acc.identityIssuances[0].associatedAttributes);
+          this.mintRoot(acc.identityIssuance[0].rootAttribute)      
+        }
+      });
+    }catch(e){
+      console.log("there was an error: ", e);
+    }
+  }
+
+pullAccounts = () => {
+  console.log("inside pullaccounts");
+  let data = this.state.data;
+  
+  const authenticate = (accountId: number) => {
+    axios.post<Authenticate>('http://localhost:5003/api/accounts/authenticate', {
+        accountId: accountId.toString(), 
+        password: null
+      })
+      .then(resolve=>{
+        let data = this.state.data;
+        data.publicSpendKey = resolve.data.publicSpendKey
+        // data.loginRegisterErrorMessage = "user successfully logged in";
+        data.loggedIn = true;
+        this.setState({data});
+        // this.props.addToGroup(accountId.toString());
+        this.getUserAttributes(accountId.toString());
+      })
+      .catch(error=>{
+        let data = this.state.data;
+        data.loginRegisterErrorMessage = "username or message is invalid";
+      })
+  }
+  
+  
+  if(data.accountArray.length==0){
+    console.log("inside if statement 1")
+    axios.get<UserAccounts[]>("http://localhost:5003/api/accounts?ofTypeOnly=1")
+    .then(resolve=>{
+      console.log("value of resolve in pullAccounts: ", resolve);
+      data.accountArray = resolve.data;
+      this.setState({data}) 
+    })
+    .catch(error=>{
+      console.log("value of error: ", error);
+    })
+  }
+  if(data.accountArray.length!=0){
+    console.log("value of accountArray: ", data.accountArray);
+    let accountButtons = data.accountArray.map((acc, key)=>{
+      return(
+        <div>
+          <div
+            key={key}
+            className="button"
+            style={{
+              marginBottom: '5px'
+            }}
+            onClick={async()=>{
+              data.publicSpendKey = acc.publicSpendKey;    
+              await this.setState({data})
+              await authenticate(acc.accountId);
+            }}
+          >
+            {acc.accountInfo}
+          </div>
+        <br/>
+        </div>
+      )
+    })
+    
+    return(
+      <div
+        style={{
+          marginTop: '10px', 
+          textAlign: 'center'
+        }}
+      >
+        <div
+          style={{
+            color: 'white', 
+            fontSize: '1.2rem'
+          }}
+        >
+          Here is the list of available Providers
+        </div>
+        <br/>
+        {accountButtons}
+      </div>
+    )
+  }else{
+    return(<div/>)
+  }
+}
+
+afterTokenCreation = () => {
+  if(this.state.data.afterToken!=""){
+    return(
+      <div
+        style={{
+          marginTop: '5px', 
+          background: 'rgb(52,79,142)',
+          marginBottom: '5px', 
+          color: 'white', 
+          maxHeight: '20vh', 
+          overflowY: 'scroll',
+          wordWrap: 'break-word',
+          width: '100%'
+        }}
+      >
+        <h3>Here is the token information after creation:</h3>
+        <br/>
+        <hr/>
+        <br/>
+        <p>{this.state.data.afterToken}</p>
+      </div>
+    )
+  }else{
+    return(<div/>)
+  }
 }
 
 
-  identityProviderFlow = async() =>{
-    //await this.createWalletsHandler();
-    //await this.createTokenHandler();
-    //this.mintTokenHandler();
+afterTokenApproval = () => {
+  if(this.state.data.afterToken!=""){
+    return(
+      <div
+        style={{
+          marginTop: '5px', 
+          background: 'rgb(52,79,142)',
+          marginBottom: '5px', 
+          color: 'white', 
+          maxHeight: '20vh', 
+          overflow: 'scroll', 
+          overflowY: 'scroll',
+          wordWrap: 'break-word',
+          width: '100%'
+        }}
+      >
+        <h3>Here is the token information after approval:</h3>
+        <br/>
+        <hr/>
+        <br/>
+        <p>{this.state.data.afterApproval}</p>
+      </div>
+    )
+  }else{
+    return(<div/>)
+  }
 }
 
-  mintNFTAttributes = () => {
+
+//   identityProviderFlow = async() =>{
+//     await this.createWalletsHandler();
+//     await this.createTokenHandler();
+//     //this.mintTokenHandler();
+//   }
+
+  NFTAttributes = async() => {
     let data = this.state.data;
-    console.log("value of wallets: ", this.props.Wallets);
+    await this.createWalletsHandler();
+    // console.log("value of wallets: ", this.props.Wallets);
     console.log("value of data.identityPayload.length: ", data.identityPayload.length);
+    console.log("value of data.identityPayload; ", data.identityPayload);
     if(data.identityPayload.length>0){
-      data.identityPayload.forEach(payload=>{
+      asyncForEach(data.identityPayload, async(payload:any)=>{
         data.symbol = payload.symbol;
         data.itemProperties = payload.properties;
         data.itemMetadata = payload.name + "@@@" + payload.alias;
-        this.setState({data}, ()=>{
-            this.identityProviderFlow()
+        await this.setState({data}, async()=>{
+          await this.createWalletsHandler();
+          await this.createTokenHandler();
+          await sleep(1000);
         })
       })
       this.identityCallback(data.trxReceipt);
@@ -1040,8 +1454,11 @@ class Identity2 extends Component<MyProps, MyState>{
         <div
           className="leftpanel"
         >
-          {/* {this.listOfAccounts()} */}
-          {this.userNamePassword()}
+          {this.listOfAccounts()}
+          {this.showRequestIssuance()}
+          {/* {this.loginAccount} */}
+          {/* {this.userNamePassword()} */}
+          {/* {this.pullAccounts()} */}
         </div>
         <div
           className="pages"
@@ -1089,8 +1506,10 @@ class Identity2 extends Component<MyProps, MyState>{
             }}
           >
             {this.storeAttributesButton()}
-          </div>     
-          {this.mintNFTAttributes()}
+          </div> 
+          {this.afterTokenCreation()}
+          {this.afterTokenApproval()}    
+          {/* {this.NFTAttributes()} */}
           {/* {this.showMintValues()} */}
         </div>
       </>
