@@ -658,7 +658,9 @@ class App extends Component<MyProps, MyState>{
                 <User3/>
               </Route>
               <Route path="/service">
-                <Service/>
+                <Service 
+                Wallets={this.state.data.Wallets}
+                />
               </Route>
               <Route path="/identity">
                 <Identity/>
