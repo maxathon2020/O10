@@ -72,7 +72,7 @@ export default class ProviderOrSignerRequest{
       );
     }
 
-    getWallet = async(mne: string) => {
+    getWallet = (mne: string) => {
       return mxw.Wallet.fromMnemonic(mne).connect(this._rpcProvider);
     }
 
