@@ -331,6 +331,18 @@ interface UserAttributes{
   rootAttributes: RootAttributes[]
 }
 
+// {"schemeId":24,"attributeName":"Password","schemeName":"Password","alias":"Password","description":null,"isActive":true,"isRoot":false}
+
+interface Schemes{
+  schemeId: number, 
+  attributeName: string, 
+  schemeName: string, 
+  alias: string, 
+  description: string, 
+  isActive: boolean, 
+  isRoot: boolean
+}
+
 // POST /api/User/UniversalProofs?accountId=<numeric>
 // {
 // 	“rootAttributeId”: numeric,
@@ -1424,32 +1436,68 @@ class User3 extends Component<MyProps, MyState>{
 
   retrieveAttributesFromIdentity = (key: number) => {
     let data = this.state.data;
-    axios.get<Schematics>("http://localhost:5003/api/IdentityProvider/AttributesScheme?accountId="+key)
+    axios.get<UserAccounts[]>("http://localhost:5003/api/accounts?ofTypeOnly=1")
     .then(resolve=>{
-      console.log("value of resolve: ", resolve.data);
-      if(resolve.data.rootAttribute!=undefined){
-        data.inputSchematics.push({
-          type: "root",
-          attributeName: resolve.data.rootAttribute.attributeName, 
-          alias: resolve.data.rootAttribute.alias, 
-          input: ""
+      console.log("value of resolve in USERACCOUNTS: ", resolve.data);
+      let publicSpendKey = "";
+      resolve.data.forEach(acc=>{
+        if(acc.accountId == key){
+          publicSpendKey = acc.publicSpendKey
+        }
+      })
+      axios.get<Schemes[]>("http://localhost:5003/api/SchemeResolution/AttributeDefinitions?issuer="+publicSpendKey)
+      .then(resolve=>{
+        console.log("value of resolve in SCHEMES: ", resolve.data);
+        resolve.data.forEach(element=>{
+          console.log("Value of elment in SCHEMES: ", element)
+          console.log("value of elment.isActive in SCHEMES: ", element.isActive);
+          console.log("value of element.attribute!='Password': ", element.attributeName); 
+          if(element.isActive){
+            if(element.attributeName!="Password"){
+              data.inputSchematics.push({
+                type: element.isRoot?"root":"associated", 
+                attributeName:element.attributeName, 
+                alias: element.alias, 
+                input: ''
+              }) 
+            }
+          }
+          this.setState({data});
         })
-      }
-      if(resolve.data.associatedAttributes!=undefined){
-        resolve.data.associatedAttributes.forEach(attribute=>{
-          data.inputSchematics.push({
-            type: "associated",
-            attributeName: attribute.attributeName,
-            alias: attribute.alias, 
-            input: ""
-          })
-        });
-      }
-      this.setState({data});
+      })  
+      .catch(error=>{
+        console.log("there was an error: ", error)
+      })      
     })
     .catch(error=>{
-      console.log("value of error: ", error);
+      console.log("there was an error: ", error)
     })
+    // axios.get<Schematics>("http://localhost:5003/api/IdentityProvider/AttributesScheme?accountId="+key)
+    // .then(resolve=>{
+    //   console.log("value of resolve: ", resolve.data);
+    //   if(resolve.data.rootAttribute!=undefined){
+    //     data.inputSchematics.push({
+    //       type: "root",
+    //       attributeName: resolve.data.rootAttribute.attributeName, 
+    //       alias: resolve.data.rootAttribute.alias, 
+    //       input: ""
+    //     })
+    //   }
+    //   if(resolve.data.associatedAttributes!=undefined){
+    //     resolve.data.associatedAttributes.forEach(attribute=>{
+    //       data.inputSchematics.push({
+    //         type: "associated",
+    //         attributeName: attribute.attributeName,
+    //         alias: attribute.alias, 
+    //         input: ""
+    //       })
+    //     });
+    //   }
+      
+    // })
+    // .catch(error=>{
+    //   console.log("value of error: ", error);
+    // })
   }
 
   masterIDList = () => {

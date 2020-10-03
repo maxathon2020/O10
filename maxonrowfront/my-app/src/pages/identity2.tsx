@@ -692,6 +692,17 @@ class Identity2 extends Component<MyProps, MyState>{
     data.loggedIn = true;
     data.username = d.demoAccount.accountName;
     data.selectedDemoIdpAccount = d;
+    axios.get<UserAccounts[]>("http://localhost:5003/api/accounts?ofTypeOnly=1")
+    .then(resolve=>{
+      resolve.data.forEach(element=>{
+        if(element.accountInfo==data.username){
+          data.publicSpendKey = element.publicSpendKey
+        }
+      })
+    })
+    .catch(error=>{
+      console.log("there was an error")
+    })
     this.setState({data});
   }
 
@@ -1108,28 +1119,62 @@ class Identity2 extends Component<MyProps, MyState>{
     let data = this.state.data;
     console.log("value of data.publicViewKey: ", data.publicViewKey);
     console.log("value of data.publicSpendKey: ", data.publicSpendKey);
+    // “attributeName”: string,
+		// “schemeName”: string,
+		// “alias”: string,
+		// “description”: string,
+		// “isActive”: boolean,
+		// “isRoot”: boolean
     console.log("value of data.attributesSelected: ", data.attributesSelected);
-    axios.put<SchemeResolution[]>("http://localhost:5003/api/SchemeResolution/AttributeDefinitions?issuer="+data.selectedDemoIdpAccount.demoAccount.account.publicSpendKey, data.attributesSelected)
+    let packageArr:{[key: string]:any} = [];
+    data.attributesSelected.forEach(elem=>{
+      elem.schemeName="default"
+      elem.isActive = true;
+      packageArr.push(elem)
+    })
+    axios.get<SchemeResolution[]>("http://localhost:5003/api/SchemeResolution/AttributeDefinitions?issuer="+data.publicSpendKey)
     .then(resolve=>{
-      console.log('value of resolve ***&&&***: ', resolve);
-      data.attributesSelected.forEach(attribute=>{
-        data.identityPayload.push({
-          name: attribute.attributeName+"@"+data.username, 
-          symbol: attribute.attributeName+"@"+data.username,
-          property: (data.isRoot?"root":"associated")+"@"+attribute.schemeName,
-          alias: attribute.alias
-        })
+      let resolveData: {[key:string]:any}[] = []
+      resolve.data.forEach(element=>{
+        element.isActive = false
+        delete element.schemeId;
+        resolveData.push(element)
       })
-      console.log("value of data.identityPayload: ", data.identityPayload);
-      data.attributesSelected = [];
-      this.setState({data}, ()=>{
-        console.log("after setting identityPayload and value: ", this.state.data.identityPayload);
-        this.NFTAttributes();
-        // this.identityProviderFlow()
-      });
+      let date = new Date()
+      var latestTIME = date.getTime();
+      let timeAttributes: {[key:string]:any}[] = [];
+      resolve.data.forEach(element=>{
+        element.schemeName = latestTIME.toString();
+      })
+      let putData = [...resolveData, ...data.attributesSelected]
+      console.log("value of putData: ", putData);
+      console.log("value of attributesSelecte next putData: ", data.attributesSelected)
+      console.log("value of data.publicSpendKey: for putData: "+data.publicSpendKey);
+      axios.put<SchemeResolution[]>("http://localhost:5003/api/SchemeResolution/AttributeDefinitions?issuer="+data.publicSpendKey, data.attributesSelected)
+      .then(resolve=>{
+        console.log('value of resolve after putData: ', resolve);
+        data.attributesSelected.forEach(attribute=>{
+          data.identityPayload.push({
+            name: attribute.attributeName+"@"+data.username, 
+            symbol: attribute.attributeName+"@"+data.username,
+            property: (data.isRoot?"root":"associated")+"@"+attribute.schemeName,
+            alias: attribute.alias
+          })
+        })
+        console.log("value of data.identityPayload: ", data.identityPayload);
+        data.attributesSelected = [];
+        this.setState({data}, ()=>{
+          console.log("after setting identityPayload and value: ", this.state.data.identityPayload);
+          this.NFTAttributes();
+          // this.identityProviderFlow()
+        });
+      })
+      .catch(error=>{
+        console.log('value of error: ', error);
+      })
     })
     .catch(error=>{
-      console.log('value of error: ', error);
+      console.log("value of error: ", error);
     })
   }
 
@@ -1267,7 +1312,6 @@ class Identity2 extends Component<MyProps, MyState>{
   mintTokenHandler = async() => {
     try{
       let data = this.state.data;
-      console.log("")
       data.accArray.forEach(acc=>{
         if(data.username==acc.accountName){
           this.mintAssociated(acc.identityIssuances[0].associatedAttributes);
