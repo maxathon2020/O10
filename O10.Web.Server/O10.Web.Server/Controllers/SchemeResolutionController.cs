@@ -167,7 +167,18 @@ namespace O10.Web.Server.Controllers
                 _dataAccessService.ToggleOffRootAttributeSchemes(issuer);
             }
 
-            return attributeDefinitions;
+            return _dataAccessService.GetAttributesSchemeByIssuer(issuer, true)
+                .Where(a => a.AttributeSchemeName != AttributesSchemes.ATTR_SCHEME_NAME_PASSWORD)
+                .Select(a => new AttributeDefinition
+                {
+                    SchemeId = a.IdentitiesSchemeId,
+                    AttributeName = a.AttributeName,
+                    SchemeName = a.AttributeSchemeName,
+                    Alias = a.Alias,
+                    Description = a.Description,
+                    IsActive = a.IsActive,
+                    IsRoot = a.CanBeRoot
+                }).ToArray();
         }
 
         [HttpGet("SchemeItems")]
