@@ -73,8 +73,13 @@ export class DemoSpAccountState extends DemoAccountState {
     initializeSignalR() {
         this.initializeSignalRHub().then(
             h => {
-                h.on("PushUserRegistration", (i) => {
-                    console.info("PushUserRegistration");
+                h.on("PushRegistration", (i) => {
+                    console.info("PushRegistration");
+                    console.info(i);
+
+                });
+                h.on("PushAuthorizationSucceeded", (i) => {
+                    console.info("PushAuthorizationSucceeded");
                     console.info(i);
 
                 });

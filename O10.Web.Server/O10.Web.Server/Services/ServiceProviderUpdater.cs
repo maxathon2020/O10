@@ -282,7 +282,7 @@ namespace O10.Web.Server.Services
                             RootAttributeName = rootAttributeDefinition.AttributeName,
                             ServiceProviderRegistrationId = registrationId.ToString(CultureInfo.InvariantCulture),
                             Commitment = registrationProof.AssetCommitments[0].ToHexString(),
-                            IssuanceCommitments = universalProofs.IssuersAttributes.Find(s => s.Issuer.Equals(universalProofs.Issuer)).Attributes.Find(a => a.SchemeName == rootAttributeDefinition.SchemeName).BindingProof.AssetCommitments.Select(a => a.ToHexString()).ToList()
+                            IssuanceCommitments = universalProofs.IssuersAttributes.Find(s => s.Issuer.Equals(universalProofs.Issuer)).RootAttribute.BindingProof.AssetCommitments.Select(a => a.ToHexString()).ToList()
                         })
                     .ConfigureAwait(false);
                 await _idenitiesHubContext
@@ -308,7 +308,7 @@ namespace O10.Web.Server.Services
                             RootAttributeName = rootAttributeDefinition.AttributeName,
                             ServiceProviderRegistrationId = registrationId.ToString(CultureInfo.InvariantCulture),
                             Commitment = registrationProof.AssetCommitments[0].ToHexString(),
-                            IssuanceCommitments = universalProofs.IssuersAttributes.Find(s => s.Issuer.Equals(universalProofs.Issuer)).Attributes.Find(a => a.SchemeName == rootAttributeDefinition.SchemeName).BindingProof.AssetCommitments.Select(a => a.ToHexString()).ToList()
+                            IssuanceCommitments = universalProofs.IssuersAttributes.Find(s => s.Issuer.Equals(universalProofs.Issuer)).RootAttribute.BindingProof.AssetCommitments.Select(a => a.ToHexString()).ToList()
                         }).ConfigureAwait(false);
                 ProceedCorrectAuthentication(universalProofs.KeyImage, universalProofs.SessionKey);
             }
